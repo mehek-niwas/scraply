@@ -154,10 +154,12 @@ const TrainConfig: React.FC<{
       setGraphData([
         {
           id: "train_loss",
-          data: data.RESULTS.train_loss.map((loss: number, i: number) => ({
-            x: i,
-            y: loss,
-          })),
+          data: data.RESULTS.train_loss
+            .map((loss: number, i: number) => ({
+              x: i,
+              y: loss,
+            }))
+            .filter((p) => Number.isFinite(p.x) && Number.isFinite(p.y)),
         },
       ]);
     } catch (error) {
@@ -231,12 +233,12 @@ const TrainConfig: React.FC<{
           )}
 
           {/* Graph Display */}
-          {graphData && (
+          {graphData && (graphData[0]?.data.length ?? 0) >= 2 && (
             <div className="my-4 h-80 rounded-lg bg-zinc-900/50 p-3">
               <ResponsiveLine
                 data={graphData}
                 margin={{ top: 50, right: 110, bottom: 50, left: 60 }}
-                xScale={{ type: "point" }}
+                xScale={{ type: "linear", min: 0, max: "auto" }}
                 yScale={{
                   type: "linear",
                   min: "auto",
@@ -245,7 +247,11 @@ const TrainConfig: React.FC<{
                   reverse: false,
                 }}
                 yFormat=" >-.2f"
-                curve="catmullRom"
+                curve={
+                  (graphData[0]?.data.length ?? 0) >= 3
+                    ? "catmullRom"
+                    : "linear"
+                }
                 axisTop={null}
                 axisRight={null}
                 axisBottom={{
@@ -270,6 +276,7 @@ const TrainConfig: React.FC<{
                 pointBorderColor={{ from: "serieColor" }}
                 pointLabelYOffset={-12}
                 useMesh={true}
+                animate={false}
                 legends={[
                   {
                     anchor: "bottom-right",

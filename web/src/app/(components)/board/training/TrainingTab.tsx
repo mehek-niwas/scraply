@@ -259,6 +259,10 @@ const TrainingTab: React.FC<TrainingTabProps> = ({ selectedDataset }) => {
   const isTrainingInProgress =
     isTraining || startTrainingMutation.isPending || isLiveTraining;
 
+  const liveLossPoints = (currentProgress?.train_losses ?? []).filter(
+    (p) => Number.isFinite(p.x) && Number.isFinite(p.y),
+  );
+
   return (
     <div className="h-full p-3">
       <div className="mx-auto mb-5 max-w-7xl">
@@ -498,8 +502,7 @@ const TrainingTab: React.FC<TrainingTabProps> = ({ selectedDataset }) => {
                         </div>
 
                         {/* Live Loss Graph */}
-                        {currentProgress.train_losses &&
-                          currentProgress.train_losses.length > 0 && (
+                        {liveLossPoints.length >= 2 && (
                             <div className="mb-6 rounded-xl border border-white/10 bg-white/5 p-4 backdrop-blur-sm">
                               <h4 className="mb-3 text-sm font-medium text-blue-200/90">
                                 Training Loss Progress
@@ -509,7 +512,7 @@ const TrainingTab: React.FC<TrainingTabProps> = ({ selectedDataset }) => {
                                   data={[
                                     {
                                       id: "train_loss",
-                                      data: currentProgress.train_losses,
+                                      data: liveLossPoints,
                                     },
                                   ]}
                                   margin={{
@@ -521,7 +524,7 @@ const TrainingTab: React.FC<TrainingTabProps> = ({ selectedDataset }) => {
                                   enableGridX={false}
                                   enableGridY={true}
                                   gridYValues={3}
-                                  xScale={{ type: "point" }}
+                                  xScale={{ type: "linear", min: 0, max: "auto" }}
                                   yScale={{
                                     type: "linear",
                                     min: 0,
@@ -598,25 +601,21 @@ const TrainingTab: React.FC<TrainingTabProps> = ({ selectedDataset }) => {
                                     legendOffset: 25,
                                     legendPosition: "middle",
                                     tickValues:
-                                      currentProgress.train_losses.length > 15
+                                      liveLossPoints.length > 15
                                         ? Array.from(
                                             {
                                               length: Math.min(
                                                 8,
-                                                currentProgress.train_losses
-                                                  .length,
+                                                liveLossPoints.length,
                                               ),
                                             },
                                             (_, i) =>
                                               Math.floor(
                                                 (i *
-                                                  (currentProgress.train_losses
-                                                    .length -
-                                                    1)) /
+                                                  (liveLossPoints.length - 1)) /
                                                   (Math.min(
                                                     8,
-                                                    currentProgress.train_losses
-                                                      .length,
+                                                    liveLossPoints.length,
                                                   ) -
                                                     1),
                                               ),
@@ -637,13 +636,16 @@ const TrainingTab: React.FC<TrainingTabProps> = ({ selectedDataset }) => {
                                   pointBorderColor="#ffffff"
                                   pointLabelYOffset={-12}
                                   useMesh={true}
-                                  curve="monotoneX"
+                                  curve={
+                                    liveLossPoints.length >= 3
+                                      ? "monotoneX"
+                                      : "linear"
+                                  }
                                   lineWidth={2}
                                   enableArea={true}
                                   areaOpacity={0.15}
                                   legends={[]}
-                                  animate={true}
-                                  motionConfig="gentle"
+                                  animate={false}
                                 />
                               </div>
                             </div>

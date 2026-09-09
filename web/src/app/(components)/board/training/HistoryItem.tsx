@@ -27,6 +27,9 @@ const HistoryItem: React.FC<HistoryItemProps> = ({
 
   const { openHistoryItemIdx, setOpenHistoryItem } = useTrainingStore();
   const { mutate: downloadFile } = useDownloadFile();
+  const lossPoints = (trainingRes.train_losses ?? []).filter(
+    (p) => Number.isFinite(p.x) && Number.isFinite(p.y),
+  );
 
   return (
     <div className="group my-3 overflow-hidden rounded-xl border border-slate-700/50 bg-zinc-900 shadow-lg backdrop-blur-sm transition-all duration-300 hover:shadow-xl">
@@ -254,18 +257,19 @@ const HistoryItem: React.FC<HistoryItemProps> = ({
               Loss Graph
             </h3>
             <div className="h-80 rounded-lg bg-zinc-900/50 p-3 ring-1 ring-zinc-700/30">
+              {lossPoints.length >= 2 ? (
               <ResponsiveLine
                 data={[
                   {
                     id: "train_loss",
-                    data: trainingRes.train_losses,
+                    data: lossPoints,
                   },
                 ]}
                 margin={{ top: 20, right: 20, bottom: 50, left: 60 }}
                 enableGridX={false}
                 enableGridY={true}
                 gridYValues={5}
-                xScale={{ type: "point" }}
+                xScale={{ type: "linear", min: 0, max: "auto" }}
                 yScale={{
                   type: "linear",
                   min: "auto",
@@ -342,18 +346,18 @@ const HistoryItem: React.FC<HistoryItemProps> = ({
                   legendOffset: 36,
                   legendPosition: "middle",
                   tickValues:
-                    trainingRes.train_losses.length > 20
+                    lossPoints.length > 20
                       ? Array.from(
                           {
                             length: Math.min(
                               10,
-                              trainingRes.train_losses.length,
+                              lossPoints.length,
                             ),
                           },
                           (_, i) =>
                             Math.floor(
-                              (i * (trainingRes.train_losses.length - 1)) /
-                                (Math.min(10, trainingRes.train_losses.length) -
+                              (i * (lossPoints.length - 1)) /
+                                (Math.min(10, lossPoints.length) -
                                   1),
                             ),
                         )
@@ -373,12 +377,18 @@ const HistoryItem: React.FC<HistoryItemProps> = ({
                 pointBorderColor="#ffffff"
                 pointLabelYOffset={-12}
                 useMesh={true}
-                curve="monotoneX"
+                curve={lossPoints.length >= 3 ? "monotoneX" : "linear"}
                 lineWidth={2}
                 enableArea={true}
                 areaOpacity={0.1}
                 legends={[]}
+                animate={false}
               />
+              ) : (
+                <div className="flex h-full items-center justify-center text-sm text-zinc-500">
+                  Not enough loss data to graph
+                </div>
+              )}
             </div>
           </div>
 
