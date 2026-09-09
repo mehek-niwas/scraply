@@ -35,44 +35,51 @@ const HistoryItem: React.FC<HistoryItemProps> = ({
     <div className="group my-3 overflow-hidden rounded-xl border border-slate-700/50 bg-zinc-900 shadow-lg backdrop-blur-sm transition-all duration-300 hover:shadow-xl">
       {/* Header */}
       <div className="px-5 pb-2 pt-4">
-        <button
-          onClick={() =>
-            setOpenHistoryItem(idx === openHistoryItemIdx ? null : idx)
-          }
-          className="w-full text-left"
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-lg font-bold text-slate-100">
-                {trainingRes.run_name || `Training Run ${idx}`}
-              </h3>
-              <p className="text-sm text-slate-400">Run #{idx}</p>
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  downloadFile(trainingRes.trainingConfig);
-                }}
-                className="flex items-center gap-2 rounded-lg bg-zinc-700 px-3 py-1.5 text-sm text-zinc-200 transition-colors duration-200 hover:bg-zinc-600"
-                title="Download Python Notebook"
-                aria-label="Download Python Notebook"
+        <div className="flex items-center justify-between">
+          <button
+            type="button"
+            onClick={() =>
+              setOpenHistoryItem(idx === openHistoryItemIdx ? null : idx)
+            }
+            className="flex-1 text-left"
+          >
+            <h3 className="text-lg font-bold text-slate-100">
+              {trainingRes.run_name || `Training Run ${idx}`}
+            </h3>
+            <p className="text-sm text-slate-400">Run #{idx}</p>
+          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => downloadFile(trainingRes.trainingConfig)}
+              className="flex items-center gap-2 rounded-lg bg-zinc-700 px-3 py-1.5 text-sm text-zinc-200 transition-colors duration-200 hover:bg-zinc-600"
+              title="Download Python Notebook"
+              aria-label="Download Python Notebook"
+            >
+              <svg
+                className="h-4 w-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
               >
-                <svg
-                  className="h-4 w-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                  />
-                </svg>
-                <span className="text-sm">Python Notebook</span>
-              </button>
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                />
+              </svg>
+              <span className="text-sm">Python Notebook</span>
+            </button>
+            <button
+              type="button"
+              onClick={() =>
+                setOpenHistoryItem(idx === openHistoryItemIdx ? null : idx)
+              }
+              aria-label={
+                openHistoryItemIdx === idx ? "Collapse run" : "Expand run"
+              }
+            >
               <svg
                 className={`h-5 w-5 text-slate-400 transition-transform duration-200 ${
                   openHistoryItemIdx === idx ? "rotate-180" : ""
@@ -88,9 +95,9 @@ const HistoryItem: React.FC<HistoryItemProps> = ({
                   d="M19 9l-7 7-7-7"
                 />
               </svg>
-            </div>
+            </button>
           </div>
-        </button>
+        </div>
       </div>
 
       {/* Summary Metrics */}
