@@ -1,10 +1,25 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 import socketio
 from models import DynamicModel, Train
 from generate import Generate
 import asyncio
+
+# Image datasets (anything except tabular pima) cannot exceed this epoch count
+IMAGE_EPOCHS_MAX = 5
+
+
+def _is_image_dataset(inp: str) -> bool:
+    return inp != "pima"
+
+
+def _validate_epochs(inp: str, n_epochs: int) -> None:
+    if _is_image_dataset(inp) and n_epochs > IMAGE_EPOCHS_MAX:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Image datasets are limited to {IMAGE_EPOCHS_MAX} epochs (got {n_epochs})",
+        )
 
 # dumb imports that i gyatt to add
 import torch
@@ -61,6 +76,7 @@ async def health_check():
 @app.post("/generate")
 async def generate(request: Request):
     data = await request.json()
+    _validate_epochs(data.get("input", ""), data.get("epoch", 0))
 
     try:
         gen = Generate(data)
@@ -256,6 +272,8 @@ async def train_stream(request: Request):
     optimizer = data["optimizer"]
     n_epochs = data["epoch"]
     batch_size = data["batch_size"]
+
+    _validate_epochs(inp, n_epochs)
 
     try:
         active_training["is_training"] = True

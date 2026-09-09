@@ -8,12 +8,14 @@ import { useStartTraining } from "~/hooks/useApi";
 import { useSocket } from "~/hooks/useSocket";
 import { useBoardStore } from "~/state/boardStore";
 import { useTrainingStore } from "~/state/trainingStore";
-import { DEFAULT_TRAINING_CONFIG } from "~/util/trainingConfig";
+import {
+  getEpochsLimitError,
+  getTrainingDefaultsForDataset,
+} from "~/util/trainingConfig";
 
 import SharedTrainingConfig from "./SharedTrainingConfig";
 import HistoryItem from "./HistoryItem";
-import posthog from "posthog-js";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Config } from "~/types/index";
 
 interface TrainingTabProps {
@@ -78,6 +80,26 @@ const TrainingTab: React.FC<TrainingTabProps> = ({ selectedDataset }) => {
     setIsLiveTraining,
     setIsTrainingPaused,
   } = useTrainingStore();
+
+  const [configError, setConfigError] = useState<string | null>(null);
+
+  // Apply dataset-specific training defaults when dataset changes
+  useEffect(() => {
+    const defaults = getTrainingDefaultsForDataset(selectedDataset);
+    setLoss(defaults.loss);
+    setOptimizer(defaults.optimizer);
+    setLearningRate(defaults.learningRate);
+    setEpochs(defaults.epochs);
+    setBatchSize(defaults.batchSize);
+    setConfigError(null);
+  }, [
+    selectedDataset,
+    setLoss,
+    setOptimizer,
+    setLearningRate,
+    setEpochs,
+    setBatchSize,
+  ]);
 
   // Handle live training progress updates
   useEffect(() => {
@@ -182,6 +204,13 @@ const TrainingTab: React.FC<TrainingTabProps> = ({ selectedDataset }) => {
   ]);
 
   const handleTrain = async () => {
+    const epochsError = getEpochsLimitError(selectedDataset, epochs);
+    if (epochsError) {
+      setConfigError(epochsError);
+      return;
+    }
+    setConfigError(null);
+
     setIsTraining(true);
     setIsLiveTraining(true); // Set live training state immediately
     resetTraining(); // Reset any previous socket training state
@@ -200,13 +229,10 @@ const TrainingTab: React.FC<TrainingTabProps> = ({ selectedDataset }) => {
 
       trainingConfigRef.current = config; // Store the config
 
-      posthog.capture("train_started", { config });
-
       // Use socket-based live training
       await startSocketTraining(config);
     } catch (error) {
       console.error("Training failed:", error);
-      posthog.captureException(error);
       setIsTraining(false);
       setIsLiveTraining(false); // Ensure live training is reset on error
     }
@@ -325,29 +351,44 @@ const TrainingTab: React.FC<TrainingTabProps> = ({ selectedDataset }) => {
               epochs={epochs}
               batchSize={batchSize}
               runName={runName}
+              selectedDataset={selectedDataset}
               setLoss={setLoss}
               setOptimizer={setOptimizer}
               setLearningRate={setLearningRate}
               setEpochs={setEpochs}
               setBatchSize={setBatchSize}
               setRunName={setRunName}
-              onResetLoss={() => setLoss(DEFAULT_TRAINING_CONFIG.loss)}
+              onResetLoss={() =>
+                setLoss(getTrainingDefaultsForDataset(selectedDataset).loss)
+              }
               onResetOptimizer={() =>
-                setOptimizer(DEFAULT_TRAINING_CONFIG.optimizer)
+                setOptimizer(
+                  getTrainingDefaultsForDataset(selectedDataset).optimizer,
+                )
               }
               onResetLearningRate={() =>
-                setLearningRate(DEFAULT_TRAINING_CONFIG.learningRate)
+                setLearningRate(
+                  getTrainingDefaultsForDataset(selectedDataset).learningRate,
+                )
               }
-              onResetEpochs={() => setEpochs(DEFAULT_TRAINING_CONFIG.epochs)}
+              onResetEpochs={() =>
+                setEpochs(getTrainingDefaultsForDataset(selectedDataset).epochs)
+              }
               onResetBatchSize={() =>
-                setBatchSize(DEFAULT_TRAINING_CONFIG.batchSize)
+                setBatchSize(
+                  getTrainingDefaultsForDataset(selectedDataset).batchSize,
+                )
               }
-              onResetRunName={() => setRunName(DEFAULT_TRAINING_CONFIG.runName)}
+              onResetRunName={() =>
+                setRunName(
+                  getTrainingDefaultsForDataset(selectedDataset).runName,
+                )
+              }
             />
           </div>
 
           {/* Error Display */}
-          {(startTrainingMutation.error || trainingError) && (
+          {(configError || startTrainingMutation.error || trainingError) && (
             <div className="rounded-lg border border-red-800 bg-red-950 p-3">
               <div className="flex items-start space-x-2">
                 <div className="flex-shrink-0">
@@ -357,10 +398,12 @@ const TrainingTab: React.FC<TrainingTabProps> = ({ selectedDataset }) => {
                 </div>
                 <div>
                   <h3 className="text-xs font-medium text-red-200">
-                    Training Failed
+                    {configError ? "Invalid Configuration" : "Training Failed"}
                   </h3>
                   <p className="mt-1 text-xs text-red-300">
-                    {trainingError || String(startTrainingMutation.error)}
+                    {configError ||
+                      trainingError ||
+                      String(startTrainingMutation.error)}
                   </p>
                 </div>
               </div>
