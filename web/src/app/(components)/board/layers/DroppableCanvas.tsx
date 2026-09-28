@@ -53,6 +53,7 @@ const DroppableCanvas = ({}: DroppableCanvasProps) => {
   return (
     <div
       ref={combinedRef}
+      data-tour="layer-canvas"
       className="canvas-scroll z-10 flex h-[75vh] flex-col items-center overflow-y-auto whitespace-nowrap rounded-2xl border-2 border-dashed border-blue-600 bg-zinc-900 p-2 pb-[100px]"
       style={{
         scrollbarWidth: "thin",
@@ -77,6 +78,7 @@ const DroppableCanvas = ({}: DroppableCanvasProps) => {
         <div className="group relative flex items-center gap-2">
           <div
             ref={setEmptySkeletonRef}
+            data-tour="layer-drop-slot"
             className={`flex-1 rounded-xl border-2 border-dashed p-4 text-zinc-400 shadow-lg backdrop-blur-sm transition-all duration-300 ${
               isOverEmptySkeleton
                 ? "border-blue-400 bg-blue-900/30 text-blue-300 shadow-blue-400/20"
@@ -98,6 +100,7 @@ const DroppableCanvas = ({}: DroppableCanvasProps) => {
       <div className="absolute right-4 top-4 z-30">
         <button
           onClick={() => setShowMiniMap(!showMiniMap)}
+          data-tour="pytorch-minimap"
           className="rounded bg-zinc-800/70 p-1.5 text-gray-400 shadow-lg backdrop-blur-sm transition-all hover:bg-zinc-700/80 hover:text-gray-200"
           title={
             showMiniMap ? "Hide PyTorch Mini-map" : "Show PyTorch Mini-map"
@@ -109,7 +112,10 @@ const DroppableCanvas = ({}: DroppableCanvasProps) => {
 
       {/* PyTorch Mini-map Overlay */}
       {showMiniMap && (
-        <div className="absolute bottom-4 right-4 top-12 z-20">
+        <div
+          className="absolute bottom-4 right-4 top-12 z-20"
+          data-tour="pytorch-minimap-panel"
+        >
           <PyTorchMiniMap canvasRef={canvasElementRef} />
         </div>
       )}

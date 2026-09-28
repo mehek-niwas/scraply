@@ -3,6 +3,7 @@ import { arrayMove } from "@dnd-kit/sortable";
 import { create } from "zustand";
 import { immer } from "zustand/middleware/immer";
 import { LAYER_BLOCKS } from "~/util/LAYER_BLOCKS";
+import DATASETS from "~/util/DATASETS";
 import { UILayer, hasNeurons } from "~/types/index";
 
 const syncLayers = (blocks: any[]): any[] => {
@@ -28,8 +29,12 @@ const syncLayers = (blocks: any[]): any[] => {
 interface BoardState {
   canvasBlocks: any[];
   activeBlock: UILayer | null;
+  selectedDataset: string;
+  selectedArchitecture: string;
 
   // Actions
+  setSelectedDataset: (dataset: string) => void;
+  setSelectedArchitecture: (architecture: string) => void;
   addBlock: (block: any) => void;
   updateBlock: (id: string, updates: any) => void;
   updateInputNeurons: (id: string, inputNeurons: number) => void;
@@ -48,6 +53,20 @@ export const useBoardStore = create<BoardState>()(
   immer((set, get) => ({
     canvasBlocks: [],
     activeBlock: null,
+    selectedDataset: DATASETS[0]!.inputName,
+    selectedArchitecture: "custom",
+
+    setSelectedDataset: (dataset: string) => {
+      set((state) => {
+        state.selectedDataset = dataset;
+      });
+    },
+
+    setSelectedArchitecture: (architecture: string) => {
+      set((state) => {
+        state.selectedArchitecture = architecture;
+      });
+    },
 
     addBlock: (block: UILayer) => {
       set((state) => {

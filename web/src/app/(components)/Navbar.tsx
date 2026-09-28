@@ -1,9 +1,11 @@
 "use client";
-import { AiOutlineStar } from "react-icons/ai";
+import { AiOutlineStar, AiOutlineQuestionCircle } from "react-icons/ai";
 import { useServerStatus } from "~/hooks/useServerStatus";
+import { useDemo } from "~/state/DemoContext";
 
 const Navbar = () => {
   const { statusColor, statusText, checkHealth } = useServerStatus();
+  const { start } = useDemo();
 
   return (
     <div className="flex justify-between bg-zinc-800 text-white">
@@ -20,6 +22,16 @@ const Navbar = () => {
           <div className={`h-2 w-2 rounded-full ${statusColor}`}></div>
           <span className="text-xs text-gray-400">{statusText}</span>
         </div>
+
+        <button
+          type="button"
+          onClick={start}
+          data-tour="tutorial-button"
+          className="my-auto flex h-4/5 items-center gap-2 rounded-md bg-zinc-700 px-4 py-2 transition-colors duration-200 hover:bg-zinc-600"
+        >
+          <AiOutlineQuestionCircle className="h-4 w-4" />
+          <span className="text-sm font-medium">Tutorial</span>
+        </button>
 
         <a
           href="https://github.com/the-AMA-team/scraply"

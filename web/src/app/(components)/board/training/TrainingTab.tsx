@@ -271,7 +271,7 @@ const TrainingTab: React.FC<TrainingTabProps> = ({ selectedDataset }) => {
     <div className="h-full p-3">
       <div className="mx-auto mb-5 max-w-7xl">
         <div className="flex items-center justify-end">
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-3" data-tour="start-training">
             {!isLiveTraining && (
               <button
                 disabled={isTrainingInProgress}
@@ -347,7 +347,10 @@ const TrainingTab: React.FC<TrainingTabProps> = ({ selectedDataset }) => {
       <div className="mx-auto grid h-full max-w-7xl grid-cols-1 gap-5 lg:grid-cols-2">
         {/* Training Configuration Section */}
         <div className="space-y-3">
-          <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-3 shadow-sm">
+          <div
+            className="rounded-xl border border-zinc-800 bg-zinc-900 p-3 shadow-sm"
+            data-tour="training-config"
+          >
             <h2 className="mb-3 text-lg font-semibold text-zinc-100">
               Training Configuration
             </h2>
@@ -397,7 +400,10 @@ const TrainingTab: React.FC<TrainingTabProps> = ({ selectedDataset }) => {
 
           {/* Error Display */}
           {(configError || startTrainingMutation.error || trainingError) && (
-            <div className="rounded-lg border border-red-800 bg-red-950 p-3">
+            <div
+              className="rounded-lg border border-red-800 bg-red-950 p-3"
+              data-tour="training-error"
+            >
               <div className="flex items-start space-x-2">
                 <div className="flex-shrink-0">
                   <div className="flex h-5 w-5 items-center justify-center rounded-full bg-red-900">
@@ -426,7 +432,10 @@ const TrainingTab: React.FC<TrainingTabProps> = ({ selectedDataset }) => {
 
         {/* Training History Section */}
         <div className="space-y-3">
-          <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-3 shadow-sm">
+          <div
+            className="rounded-xl border border-zinc-800 bg-zinc-900 p-3 shadow-sm"
+            data-tour="training-history"
+          >
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-lg font-semibold text-zinc-100">
                 Training History

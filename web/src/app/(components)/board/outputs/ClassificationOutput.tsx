@@ -16,7 +16,10 @@ const ClassificationOutput = () => {
   if (!currentOutput) {
     return (
       <div className="flex h-full items-center justify-center">
-        <div className="mt-10 rounded-xl bg-zinc-800/50 p-8 text-center backdrop-blur-sm">
+        <div
+          className="mt-10 rounded-xl bg-zinc-800/50 p-8 text-center backdrop-blur-sm"
+          data-tour="outputs-empty"
+        >
           <div className="text-zinc-400">
             No output data available. Please train a model first.
           </div>
@@ -403,8 +406,11 @@ const ClassificationOutput = () => {
 
   return (
     <div className="h-full bg-zinc-900 p-6">
-      <div className="mx-auto max-w-7xl space-y-8">
-        <div className="flex space-x-2 rounded-xl bg-zinc-800/50 p-2 backdrop-blur-sm">
+      <div className="mx-auto max-w-7xl space-y-8" data-tour="outputs-panel">
+        <div
+          className="flex space-x-2 rounded-xl bg-zinc-800/50 p-2 backdrop-blur-sm"
+          data-tour="outputs-sections"
+        >
           {[
             { key: "confusion", label: "Confusion Matrix" },
             { key: "random_samples", label: "Random Samples" },

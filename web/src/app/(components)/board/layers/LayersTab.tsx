@@ -38,7 +38,7 @@ const LayersTab: React.FC<LayersTabProps> = () => {
       <div className={`mx-20 mt-10 flex`}>
         {/* Toolbox area */}
         <div className="mr-4">
-          <div className="rounded-xl bg-zinc-800 py-1">
+          <div className="rounded-xl bg-zinc-800 py-1" data-tour="layer-toolbox">
             {LAYER_BLOCKS.map((block) => (
               <DraggableBlock
                 key={block.id}

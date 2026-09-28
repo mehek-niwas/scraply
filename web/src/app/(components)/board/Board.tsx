@@ -7,6 +7,8 @@ import Toggle from "../Toggle";
 import TrainingTab from "./training/TrainingTab";
 import OutputsTab from "./outputs/OutputsTab";
 import { useBoardStore } from "~/state/boardStore";
+import { useDemo } from "~/state/DemoContext";
+import TourOverlay from "../TourOverlay";
 import {
   generateUniqueBlocks,
   generateLeNetBlocks,
@@ -15,13 +17,15 @@ import {
 } from "~/util/defaultConfigs";
 
 const Board = () => {
-  const [tab, setTab] = useState<AppTabs>(AppTabs.LAYERS);
-  const [selectedDataset, setSelectedDataset] = useState<string>(
-    DATASETS[0]!.inputName,
-  );
-  const [selectedArchitecture, setSelectedArchitecture] =
-    useState<string>("custom");
-  const { loadDefaultConfig, clearCanvas } = useBoardStore();
+  const { tab, setTab } = useDemo();
+  const {
+    selectedDataset,
+    setSelectedDataset,
+    selectedArchitecture,
+    setSelectedArchitecture,
+    loadDefaultConfig,
+    clearCanvas,
+  } = useBoardStore();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -80,7 +84,7 @@ const Board = () => {
       <div>
         <div className="flex justify-between p-4">
           <div className="mx-4 flex items-center space-x-6">
-            <div className="flex items-center">
+            <div className="flex items-center" data-tour="dataset">
               <div className="mx-2 text-lg">Dataset</div>
               {/* Custom Dropdown */}
               <div className="relative min-w-[220px]" ref={dropdownRef}>
@@ -110,7 +114,10 @@ const Board = () => {
                   </svg>
                 </button>
                 {dropdownOpen && (
-                  <div className="absolute z-50 mt-1 w-full rounded bg-zinc-800 shadow-lg ring-1 ring-zinc-700">
+                  <div
+                    className="absolute z-50 mt-1 w-full rounded bg-zinc-800 shadow-lg ring-1 ring-zinc-700"
+                    data-tour="dataset-menu"
+                  >
                     {["classification", "regression"].map((kind) => {
                       const group = DATASETS.filter((d) => d.kind === kind);
                       if (group.length === 0) return null;
@@ -179,7 +186,7 @@ const Board = () => {
                 )}
               </div>
             </div>
-            <div className="flex items-center">
+            <div className="flex items-center" data-tour="architecture">
               <div className="mx-2 text-sm text-zinc-300">Architecture:</div>
               <select
                 className="rounded bg-zinc-800 p-2 text-sm text-white outline-none ring-1 ring-zinc-700"
@@ -194,12 +201,16 @@ const Board = () => {
               </select>
             </div>
           </div>
-          <Toggle
-            color="blue"
-            options={Object.values(AppTabs)}
-            selected={tab}
-            setSelected={setTab as React.Dispatch<React.SetStateAction<string>>}
-          />
+          <div data-tour="tab-toggle" className="h-fit rounded-xl">
+            <Toggle
+              color="blue"
+              options={Object.values(AppTabs)}
+              selected={tab}
+              setSelected={
+                setTab as React.Dispatch<React.SetStateAction<string>>
+              }
+            />
+          </div>
 
           {/* duplicate invisible component for centering, find a better way */}
           <div className="invisible mx-4 flex items-center space-x-6">
@@ -233,6 +244,7 @@ const Board = () => {
 
         {Tabs[tab]}
       </div>
+      <TourOverlay />
     </div>
   );
 };

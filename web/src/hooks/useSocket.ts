@@ -68,7 +68,8 @@ interface UseSocketReturn {
   checkTrainingStatus: () => void;
 }
 
-export const useSocket = (): UseElectronReturn => {
+export const useSocket = (): UseSocketReturn => {
+  const [socket, setSocket] = useState<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [trainingProgress, setTrainingProgress] =
     useState<TrainingProgress | null>(null);
@@ -448,6 +449,7 @@ export const useSocket = (): UseElectronReturn => {
   };
 
   return {
+    socket,
     isConnected,
     trainingProgress,
     trainingPhase,
