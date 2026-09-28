@@ -51,7 +51,6 @@ interface TrainingPhase {
 }
 
 interface UseSocketReturn {
-  socket: Socket | null;
   isConnected: boolean;
   trainingProgress: TrainingProgress | null;
   trainingPhase: TrainingPhase | null;
@@ -69,7 +68,6 @@ interface UseSocketReturn {
 }
 
 export const useSocket = (): UseSocketReturn => {
-  const [socket, setSocket] = useState<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [trainingProgress, setTrainingProgress] =
     useState<TrainingProgress | null>(null);
@@ -95,7 +93,6 @@ export const useSocket = (): UseSocketReturn => {
     });
 
     socketRef.current = newSocket;
-    setSocket(newSocket);
 
     let isTabClosing = false; // Track if tab is actually closing vs just hidden
 
@@ -449,7 +446,6 @@ export const useSocket = (): UseSocketReturn => {
   };
 
   return {
-    socket,
     isConnected,
     trainingProgress,
     trainingPhase,
