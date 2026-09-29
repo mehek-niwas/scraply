@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import io, { Socket } from "socket.io-client";
 import { API_CONFIG, SOCKET_CONFIG } from "~/util/config";
 
@@ -112,6 +112,7 @@ export const useSocket = (): UseSocketReturn => {
     newSocket.on("disconnect", () => {
       console.log("Disconnected from training server");
       setIsConnected(false);
+      isTrainingActiveRef.current = false;
       setIsTrainingActive(false);
     });
 
@@ -339,7 +340,11 @@ export const useSocket = (): UseSocketReturn => {
       window.removeEventListener("pagehide", handlePageHide);
       newSocket.close();
     };
-  }, [isTrainingActive]);
+    // Create the socket exactly once. Handlers read live training state via
+    // isTrainingActiveRef, so this must NOT depend on isTrainingActive -
+    // otherwise the socket is torn down and reconnected every time training
+    // starts/stops, causing the UI to flicker between screens.
+  }, []);
 
   const startTraining = async (config: any) => {
     const socket = socketRef.current;
@@ -392,49 +397,45 @@ export const useSocket = (): UseSocketReturn => {
     }
   };
 
-  const pauseTraining = async () => {
-    try {
-      if (typeof window !== "undefined" && window.electronAPI) {
-        await window.electronAPI.pauseTraining();
-      }
-    } catch (error) {
-      console.error("Failed to pause training:", error);
+  const emitTrainingControl = (event: string) => {
+    const socket = socketRef.current;
+    if (!socket?.connected) {
+      setTrainingError("Not connected to training server");
+      return false;
     }
+    socket.emit(event);
+    return true;
   };
 
-  const resumeTraining = async () => {
-    try {
-      if (typeof window !== "undefined" && window.electronAPI) {
-        await window.electronAPI.resumeTraining();
-      }
-    } catch (error) {
-      console.error("Failed to resume training:", error);
-    }
+  const pauseTraining = () => {
+    if (!emitTrainingControl("pause_training")) return;
+    // Show "Pausing..." immediately; the server confirms once the loop yields.
+    setIsTrainingPausing(true);
   };
 
-  const stopTraining = async () => {
-    try {
-      if (typeof window !== "undefined" && window.electronAPI) {
-        await window.electronAPI.stopTraining();
-      }
-    } catch (error) {
-      console.error("Failed to stop training:", error);
-    }
+  const resumeTraining = () => {
+    emitTrainingControl("resume_training");
   };
 
-  const resetTraining = () => {
+  const stopTraining = () => {
+    emitTrainingControl("stop_training");
+  };
+
+  const resetTraining = useCallback(() => {
     clearStoredJobId();
     setTrainingProgress(null);
     setTrainingCompleted(null);
     setTrainingError(null);
+    isTrainingActiveRef.current = false;
     setIsTrainingActive(false);
     setIsTrainingPaused(false);
     setIsTrainingPausing(false);
     setTrainingPhase(null);
     processedCompletedResultsRef.current = null;
-  };
+  }, []);
 
-  const checkTrainingStatus = () => {
+  // Stable identity so effects depending on it don't re-run every render
+  const checkTrainingStatus = useCallback(() => {
     if (socketRef.current?.connected) {
       const jobId = readStoredJobId();
       if (jobId) {
@@ -443,7 +444,7 @@ export const useSocket = (): UseSocketReturn => {
         socketRef.current.emit("check_training_status");
       }
     }
-  };
+  }, []);
 
   return {
     isConnected,
