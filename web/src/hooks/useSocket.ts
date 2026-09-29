@@ -94,8 +94,6 @@ export const useSocket = (): UseSocketReturn => {
 
     socketRef.current = newSocket;
 
-    let isTabClosing = false; // Track if tab is actually closing vs just hidden
-
     // Connection events
     newSocket.on("connect", () => {
       console.log("Connected to training server");
@@ -130,7 +128,6 @@ export const useSocket = (): UseSocketReturn => {
         }
       } else if (document.visibilityState === "visible") {
         // Tab became visible again - definitely just switched tabs
-        isTabClosing = false;
         if (newSocket.connected) {
           newSocket.emit("tab_visible");
           const jobId = readStoredJobId();
@@ -145,20 +142,8 @@ export const useSocket = (): UseSocketReturn => {
 
     // Detect when tab is actually closing (not just hidden)
     const handleBeforeUnload = () => {
-      isTabClosing = true;
       if (newSocket.connected && isTrainingActiveRef.current) {
-        // Try to emit stop_training before page closes
-        // Use sendBeacon as fallback for more reliable delivery
-        try {
-          newSocket.emit("stop_training");
-        } catch (e) {
-          // If socket fails, try using Beacon API as fallback
-          const data = JSON.stringify({ action: "stop_training" });
-          navigator.sendBeacon(
-            SOCKET_CONFIG.URL.replace("ws://", "http://").replace("wss://", "https://") + "/stop-on-close",
-            data
-          );
-        }
+        newSocket.emit("stop_training");
       }
     };
 

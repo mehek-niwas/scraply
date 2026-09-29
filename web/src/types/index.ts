@@ -4,4 +4,3 @@ export * from "./layers";
 export * from "./training";
 export * from "./guards";
 export * from "./outputs";
-export * from "./electron";
