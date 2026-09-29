@@ -18,7 +18,6 @@ export const API_CONFIG = {
   // Specific endpoint URLs
   endpoints: {
     generate: "/generate",
-    train: "/train",
     trainStream: "/train-stream",
     transformerTrain: "/transformertrain",
     transformerTest: "/transformertest",

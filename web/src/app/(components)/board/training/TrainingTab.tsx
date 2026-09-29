@@ -4,7 +4,6 @@ import { HiTrash } from "react-icons/hi2";
 import { FaPlay, FaPause, FaStop } from "react-icons/fa";
 import { ResponsiveLine } from "@nivo/line";
 import { getConfig } from "~/util/board.util";
-import { useStartTraining } from "~/hooks/useApi";
 import { useSocket } from "~/hooks/useSocket";
 import { useBoardStore } from "~/state/boardStore";
 import { useTrainingStore } from "~/state/trainingStore";
@@ -24,7 +23,6 @@ interface TrainingTabProps {
 
 const TrainingTab: React.FC<TrainingTabProps> = ({ selectedDataset }) => {
   const { canvasBlocks } = useBoardStore();
-  const startTrainingMutation = useStartTraining();
 
   // Store the training config that was used when training started
   const trainingConfigRef = useRef<Config | null>(null);
@@ -260,8 +258,7 @@ const TrainingTab: React.FC<TrainingTabProps> = ({ selectedDataset }) => {
     resetTraining();
   };
 
-  const isTrainingInProgress =
-    isTraining || startTrainingMutation.isPending || isLiveTraining;
+  const isTrainingInProgress = isTraining || isLiveTraining;
 
   const liveLossPoints = (currentProgress?.train_losses ?? []).filter(
     (p) => Number.isFinite(p.x) && Number.isFinite(p.y),
@@ -399,11 +396,8 @@ const TrainingTab: React.FC<TrainingTabProps> = ({ selectedDataset }) => {
           </div>
 
           {/* Error Display */}
-          {(configError || startTrainingMutation.error || trainingError) && (
-            <div
-              className="rounded-lg border border-red-800 bg-red-950 p-3"
-              data-tour="training-error"
-            >
+          {(configError || trainingError) && (
+            <div className="rounded-lg border border-red-800 bg-red-950 p-3">
               <div className="flex items-start space-x-2">
                 <div className="flex-shrink-0">
                   <div className="flex h-5 w-5 items-center justify-center rounded-full bg-red-900">
@@ -420,9 +414,7 @@ const TrainingTab: React.FC<TrainingTabProps> = ({ selectedDataset }) => {
                         : "Training Failed"}
                   </h3>
                   <p className="mt-1 text-xs text-red-300">
-                    {configError ||
-                      trainingError ||
-                      String(startTrainingMutation.error)}
+                    {configError || trainingError}
                   </p>
                 </div>
               </div>

@@ -2,7 +2,6 @@ import { useMutation } from "@tanstack/react-query";
 import { Config, TransformerConfig } from "~/types/index";
 import { API_CONFIG } from "~/util/config";
 
-// Electron API functions
 const downloadFile = async (config: Config): Promise<Blob> => {
   const response = await fetch(API_CONFIG.getApiUrl("/generate"), {
     method: "POST",
@@ -18,23 +17,18 @@ const downloadFile = async (config: Config): Promise<Blob> => {
       `Download failed: ${response.status} ${response.statusText}`,
     );
   }
-};
 
-const startTraining = async (config: Config) => {
-  const response = await fetch(API_CONFIG.getApiUrl("/train"), {
-    method: "POST",
-    body: JSON.stringify(config),
-    headers: {
-      "Content-Type": "application/json",
-      "ngrok-skip-browser-warning": "true",
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error(
-      `Training failed: ${response.status} ${response.statusText}`,
-    );
+  const contentType = response.headers.get("content-type") ?? "";
+  if (contentType.includes("application/json")) {
+    const err = await response.json().catch(() => null);
+    const message =
+      err && typeof err.error === "string"
+        ? err.error
+        : "Notebook generation failed";
+    throw new Error(message);
   }
+
+  return response.blob();
 };
 
 const startTransformerTraining = async (config: TransformerConfig) => {
@@ -117,18 +111,6 @@ export const useDownloadFile = () => {
   });
 };
 
-export const useStartTraining = () => {
-  return useMutation({
-    mutationFn: startTraining,
-    onSuccess: (data) => {
-      console.log("Training completed:", data);
-    },
-    onError: (error) => {
-      console.error("Training error:", error);
-    },
-  });
-};
-
 export const useStartTransformerTraining = () => {
   return useMutation({
     mutationFn: startTransformerTraining,
@@ -156,7 +138,6 @@ export const useServerHealth = () => {
 // Raw API functions for backward compatibility
 export {
   downloadFile as downloadFileApi,
-  startTraining as startTrainingApi,
   startTransformerTraining as startTransformerTrainingApi,
   transformerTest as transformerTestApi,
   checkServerHealth as checkServerHealthApi,

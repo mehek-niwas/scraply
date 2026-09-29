@@ -13,7 +13,6 @@ import {
 // Import the API functions from the new hooks file
 import {
   downloadFileApi,
-  startTrainingApi,
   startTransformerTrainingApi,
   transformerTestApi,
 } from "~/hooks/useApi";
@@ -137,6 +136,5 @@ export const getConfig = (
 
 // Re-export API functions for backward compatibility
 export const downloadFile = downloadFileApi;
-export const startTraining = startTrainingApi;
 export const startTransformerTraining = startTransformerTrainingApi;
 export const transformerTest = transformerTestApi;
