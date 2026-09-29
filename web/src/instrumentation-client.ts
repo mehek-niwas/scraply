@@ -5,6 +5,8 @@ if(projectToken) {
   posthog.init(projectToken, {
     api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST,
     defaults: "2026-05-30",
+    capture_heatmaps: true,
+    person_profiles: 'always',
   });
 }
 
