@@ -9,8 +9,14 @@ export type TutorialPlacement =
   | "center"
   | "corner";
 
-/** Which column of the neuron diagram the current step is about. */
-export type SketchFocus = "input" | "hidden" | "output";
+/** Which of the two layers the diagram should emphasize. */
+export type SketchFocus = "layer1" | "layer2";
+
+/** One ghost action. It plays once and does not block Next. */
+export type TutorialHint = "drag" | "sizes" | "sigmoid";
+
+/** Canvas staged while the ghost builds the two-layer lesson. */
+export type LessonStage = "empty" | "one" | "two" | "sized" | "sigmoid";
 
 export interface TutorialStep {
   id: string;
@@ -23,34 +29,46 @@ export interface TutorialStep {
   tab?: AppTabs;
   /** Let clicks through the highlight so the canvas can be edited. */
   interactive?: boolean;
-  /** Draw the live neuron diagram, emphasizing this column. */
+  /** Draw the live neuron diagram, emphasizing this layer. */
   sketch?: SketchFocus;
+  hint?: TutorialHint;
+  /** Canvas to show when the step opens, before the ghost finishes. */
+  lessonBefore?: LessonStage;
+  /** Canvas to show once the ghost finishes, or when leaving the step forward. */
+  lessonAfter?: LessonStage;
 }
 
-const LAYER_LESSON_IDS = new Set([
-  "layer-inputs",
-  "layer-hidden",
-  "layer-output",
-]);
+const lessonLinear = (
+  id: string,
+  activation: "ReLU" | "Sigmoid",
+  inputNeurons: number,
+  outputNeurons: number,
+): UILayer => ({
+  id,
+  ...getBlockMeta("Linear"),
+  activationFunction: activation,
+  params: { inputNeurons, outputNeurons },
+});
 
-export const isLayerLessonStep = (id: string | undefined) =>
-  !!id && LAYER_LESSON_IDS.has(id);
-
-/** Two-layer network used only by the layer lesson. Not the Pima preset. */
-export function createPimaLessonBlocks(): UILayer[] {
+/** Stages of the two-layer lesson. Not the Pima preset. */
+export function lessonBlocks(stage: LessonStage): UILayer[] {
+  if (stage === "empty") return [];
+  if (stage === "one") return [lessonLinear("lesson-linear-1", "ReLU", 8, 8)];
+  if (stage === "two") {
+    return [
+      lessonLinear("lesson-linear-1", "ReLU", 8, 8),
+      lessonLinear("lesson-linear-2", "ReLU", 8, 8),
+    ];
+  }
+  if (stage === "sized") {
+    return [
+      lessonLinear("lesson-linear-1", "ReLU", 8, 16),
+      lessonLinear("lesson-linear-2", "ReLU", 16, 1),
+    ];
+  }
   return [
-    {
-      id: "lesson-linear-hidden",
-      ...getBlockMeta("Linear"),
-      activationFunction: "ReLU",
-      params: { inputNeurons: 8, outputNeurons: 16 },
-    },
-    {
-      id: "lesson-linear-output",
-      ...getBlockMeta("Linear"),
-      activationFunction: "Sigmoid",
-      params: { inputNeurons: 16, outputNeurons: 1 },
-    },
+    lessonLinear("lesson-linear-1", "ReLU", 8, 16),
+    lessonLinear("lesson-linear-2", "Sigmoid", 16, 1),
   ];
 }
 
@@ -65,37 +83,60 @@ const TUTORIAL_STEPS: TutorialStep[] = [
     tab: AppTabs.LAYERS,
   },
   {
-    id: "layer-inputs",
-    title: "Eight numbers in",
+    id: "layer-one",
+    title: "Layer 1",
     description:
-      "Pima describes each patient with 8 measurements, like glucose, BMI, and age. They enter the first layer through In.",
-    target: ["layer-canvas"],
+      "Drag Linear onto the canvas. That block is layer 1. In is how many numbers come in, and Out is how many neurons. The diagram shows the layer when it lands.",
+    target: ["layer-toolbox", "layer-canvas"],
     placement: "corner",
     tab: AppTabs.LAYERS,
     interactive: true,
-    sketch: "input",
+    hint: "drag",
+    lessonBefore: "empty",
+    lessonAfter: "one",
+    sketch: "layer1",
   },
   {
-    id: "layer-hidden",
-    title: "The hidden layer",
+    id: "layer-two",
+    title: "Layer 2",
     description:
-      "Out is how many neurons this layer has. Change the top block's Out from 16 to 8 and the middle row shrinks. The next layer's In follows.",
-    target: ["layer-canvas"],
+      "Drag Linear again so it sits under the first. That is layer 2. Its In matches layer 1's Out, which connects the two layers.",
+    target: ["layer-toolbox", "layer-canvas"],
     placement: "corner",
     tab: AppTabs.LAYERS,
     interactive: true,
-    sketch: "hidden",
+    hint: "drag",
+    lessonBefore: "one",
+    lessonAfter: "two",
+    sketch: "layer2",
   },
   {
-    id: "layer-output",
-    title: "One answer",
+    id: "layer-sizes",
+    title: "Set In and Out",
     description:
-      "The last layer has Out 1. Sigmoid keeps that number between 0 and 1, the probability of diabetes.",
+      "Pima has 8 measurements, so layer 1's In stays 8. Set its Out to 16. Layer 2's Out is 1: one answer for each patient. Layer 2's In follows layer 1.",
     target: ["layer-canvas"],
     placement: "corner",
     tab: AppTabs.LAYERS,
     interactive: true,
-    sketch: "output",
+    hint: "sizes",
+    lessonBefore: "two",
+    lessonAfter: "sized",
+    sketch: "layer1",
+  },
+  {
+    id: "layer-sigmoid",
+    title: "Sigmoid on layer 2",
+    description:
+      "On the last layer, change Activation to Sigmoid. That keeps the answer between 0 and 1.",
+    target: ["layer-canvas"],
+    placement: "corner",
+    tab: AppTabs.LAYERS,
+    interactive: true,
+    hint: "sigmoid",
+    lessonBefore: "sized",
+    lessonAfter: "sigmoid",
+    sketch: "layer2",
   },
   {
     id: "training-config",

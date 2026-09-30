@@ -9,6 +9,7 @@ interface Column {
   key: string;
   count: number;
   caption: string;
+  detail: string;
   activation?: string;
   role: SketchFocus;
 }
@@ -18,29 +19,18 @@ const NeuronSketch = ({ focus }: { focus: SketchFocus }) => {
   const linear = canvasBlocks.filter(
     (block) => block?.label === "Linear" && hasNeurons(block),
   );
-  const first = linear[0];
-  if (!first) return null;
+  if (linear.length === 0) return null;
 
-  const columns: Column[] = [
-    {
-      key: "inputs",
-      count: first.params.inputNeurons,
-      caption: "inputs",
-      role: "input",
-    },
-    ...linear.map((block, index) => {
-      const last = index === linear.length - 1;
-      return {
-        key: block.id as string,
-        count: block.params.outputNeurons as number,
-        caption: last ? "answer" : "neurons",
-        activation: hasActivationFunction(block)
-          ? block.activationFunction
-          : undefined,
-        role: (last ? "output" : "hidden") as SketchFocus,
-      };
-    }),
-  ];
+  const columns: Column[] = linear.slice(0, 2).map((block, index) => ({
+    key: block.id as string,
+    count: block.params.outputNeurons as number,
+    caption: `Layer ${index + 1}`,
+    detail: `in ${block.params.inputNeurons}`,
+    activation: hasActivationFunction(block)
+      ? block.activationFunction
+      : undefined,
+    role: index === 0 ? "layer1" : "layer2",
+  }));
 
   return (
     <div className="mt-3 flex items-end justify-center gap-1 overflow-x-auto rounded-lg bg-zinc-800/80 px-2 py-3">
@@ -50,14 +40,14 @@ const NeuronSketch = ({ focus }: { focus: SketchFocus }) => {
         return (
           <div key={column.key} className="flex items-end">
             {index > 0 && (
-              <div className="mb-10 px-0.5 text-xs text-zinc-500">→</div>
+              <div className="mb-12 px-0.5 text-xs text-zinc-500">→</div>
             )}
             <div
-              className={`flex w-16 flex-col items-center gap-1 ${
+              className={`flex w-20 flex-col items-center gap-1 ${
                 active ? "text-blue-200" : "text-zinc-400"
               }`}
             >
-              <div className="flex min-h-10 max-w-16 flex-wrap content-end justify-center gap-1">
+              <div className="flex min-h-10 max-w-20 flex-wrap content-end justify-center gap-1">
                 {Array.from({ length: shown }, (_, dot) => (
                   <span
                     key={dot}
@@ -77,6 +67,7 @@ const NeuronSketch = ({ focus }: { focus: SketchFocus }) => {
               <div className="text-[10px] uppercase tracking-wide">
                 {column.caption}
               </div>
+              <div className="text-[10px] text-zinc-400">{column.detail}</div>
               {column.activation && (
                 <div className="text-[10px] text-zinc-400">
                   {column.activation}

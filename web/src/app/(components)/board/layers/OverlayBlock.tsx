@@ -146,6 +146,7 @@ const OverlayBlock = ({ id, label, color, block }: OverlayBlockProps) => {
                   className="h-8 w-12 rounded-md border border-gray-300 bg-white text-center text-sm text-gray-900 shadow-sm outline-none transition-all duration-200 focus:border-blue-500 focus:ring-1"
                   style={{ "--accent-color": color } as React.CSSProperties}
                   type="number"
+                  data-field="in"
                   value={block.params.inputNeurons}
                   onChange={(e) => {
                     const newInputNeurons = parseInt(e.target.value);
@@ -159,6 +160,7 @@ const OverlayBlock = ({ id, label, color, block }: OverlayBlockProps) => {
                   className="h-8 w-12 rounded-md border border-gray-300 bg-white text-center text-sm text-gray-900 shadow-sm outline-none transition-all duration-200 focus:border-blue-500 focus:ring-1"
                   style={{ "--accent-color": color } as React.CSSProperties}
                   type="number"
+                  data-field="out"
                   value={block.params.outputNeurons}
                   onChange={(e) => {
                     const newOutputNeurons = parseInt(e.target.value);
@@ -191,6 +193,7 @@ const OverlayBlock = ({ id, label, color, block }: OverlayBlockProps) => {
             </label>
             <select
               className="w-full cursor-pointer rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm outline-none transition-all duration-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-400"
+              data-field="activation"
               value={block.activationFunction as string}
               onChange={(e) => {
                 const newActivationFunction = e.target.value;

@@ -3,6 +3,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react
 import { useDemo } from "~/state/DemoContext";
 import TUTORIAL_STEPS, { TutorialPlacement } from "~/util/TUTORIAL_STEPS";
 import DemoCard from "./DemoCard";
+import DragHint from "./DragHint";
 
 const HIGHLIGHT_PADDING = 6;
 const HIGHLIGHT_RADIUS = 12;
@@ -137,7 +138,7 @@ const isTypingTarget = (el: EventTarget | null) =>
   (el.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(el.tagName));
 
 const TourOverlay = () => {
-  const { isDemoing, stepIdx, next, prev, close } = useDemo();
+  const { isDemoing, stepIdx, next, prev, close, showLesson } = useDemo();
   const [primaryRect, setPrimaryRect] = useState<Rect | null>(null);
   const [holes, setHoles] = useState<Rect[]>([]);
   const [cardSize, setCardSize] = useState({ width: 320, height: 180 });
@@ -161,6 +162,10 @@ const TourOverlay = () => {
     if (!isDemoing || !step) return;
 
     const frame = requestAnimationFrame(() => {
+      const canvas = document.querySelector<HTMLElement>(
+        '[data-tour="layer-canvas"]',
+      );
+      if (canvas && step.lessonBefore) canvas.scrollTop = 0;
       findTargets(step.target)[0]?.scrollIntoView({
         block: "nearest",
         inline: "nearest",
@@ -231,9 +236,18 @@ const TourOverlay = () => {
           }}
         />
       ))}
+      {step.hint && (
+        <DragHint
+          key={`hint-${step.id}`}
+          kind={step.hint}
+          onDone={() => {
+            if (step.lessonAfter) showLesson(step.lessonAfter);
+          }}
+        />
+      )}
       <DemoCard
         ref={cardRef}
-        key={step.id}
+        key={`card-${step.id}`}
         title={step.title}
         description={step.description}
         currIdx={stepIdx}

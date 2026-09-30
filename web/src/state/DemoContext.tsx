@@ -10,8 +10,8 @@ import {
 import { AppTabs, UILayer } from "~/types/index";
 import { useBoardStore } from "~/state/boardStore";
 import TUTORIAL_STEPS, {
-  createPimaLessonBlocks,
-  isLayerLessonStep,
+  lessonBlocks,
+  type LessonStage,
 } from "~/util/TUTORIAL_STEPS";
 
 interface CanvasSnapshot {
@@ -27,6 +27,7 @@ interface DemoContextValue {
   next: () => void;
   prev: () => void;
   close: () => void;
+  showLesson: (stage: LessonStage) => void;
   tab: AppTabs;
   setTab: (tab: AppTabs) => void;
 }
@@ -38,6 +39,7 @@ const DemoContext = createContext<DemoContextValue>({
   next: () => {},
   prev: () => {},
   close: () => {},
+  showLesson: () => {},
   tab: AppTabs.LAYERS,
   setTab: () => {},
 });
@@ -65,7 +67,7 @@ const DemoProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const snapshotRef = useRef<CanvasSnapshot | null>(null);
   stepIdxRef.current = stepIdx;
 
-  const loadLesson = useCallback(() => {
+  const showLesson = useCallback((stage: LessonStage) => {
     const store = useBoardStore.getState();
     if (!snapshotRef.current) {
       snapshotRef.current = {
@@ -74,7 +76,7 @@ const DemoProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
         architecture: store.selectedArchitecture,
       };
     }
-    applyCanvas("pima", "custom", createPimaLessonBlocks());
+    applyCanvas("pima", "custom", lessonBlocks(stage));
   }, []);
 
   const restoreSnapshot = useCallback(() => {
@@ -89,13 +91,16 @@ const DemoProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
       const step = TUTORIAL_STEPS[idx];
       if (!step) return;
       const prev = TUTORIAL_STEPS[stepIdxRef.current];
+      const forward = idx > stepIdxRef.current;
       if (step.tab) setTab(step.tab);
-      if (step.id === "layer-inputs" && !isLayerLessonStep(prev?.id)) {
-        loadLesson();
+      if (step.lessonBefore) {
+        showLesson(step.lessonBefore);
+      } else if (forward && snapshotRef.current && prev?.lessonAfter) {
+        applyCanvas("pima", "custom", lessonBlocks(prev.lessonAfter));
       }
       setStepIdx(idx);
     },
-    [loadLesson],
+    [showLesson],
   );
 
   const start = useCallback(() => {
@@ -119,7 +124,17 @@ const DemoProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
 
   return (
     <DemoContext.Provider
-      value={{ isDemoing, stepIdx, start, next, prev, close, tab, setTab }}
+      value={{
+        isDemoing,
+        stepIdx,
+        start,
+        next,
+        prev,
+        close,
+        showLesson,
+        tab,
+        setTab,
+      }}
     >
       {children}
     </DemoContext.Provider>
