@@ -3,7 +3,6 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react
 import { useDemo } from "~/state/DemoContext";
 import TUTORIAL_STEPS, { TutorialPlacement } from "~/util/TUTORIAL_STEPS";
 import DemoCard from "./DemoCard";
-import TutorialDemo from "./TutorialDemo";
 
 const HIGHLIGHT_PADDING = 6;
 const HIGHLIGHT_RADIUS = 12;
@@ -138,15 +137,13 @@ const isTypingTarget = (el: EventTarget | null) =>
   (el.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(el.tagName));
 
 const TourOverlay = () => {
-  const { isDemoing, stepIdx, next, prev, close, tab } = useDemo();
+  const { isDemoing, stepIdx, next, prev, close } = useDemo();
   const [primaryRect, setPrimaryRect] = useState<Rect | null>(null);
   const [holes, setHoles] = useState<Rect[]>([]);
-  const [isStepComplete, setIsStepComplete] = useState(true);
-  const [cardSize, setCardSize] = useState({ width: 320, height: 200 });
+  const [cardSize, setCardSize] = useState({ width: 320, height: 180 });
   const cardRef = useRef<HTMLDivElement>(null);
 
   const step = TUTORIAL_STEPS[stepIdx];
-  const taskRequired = !!step?.isComplete;
 
   const measure = useCallback(() => {
     const rects = findTargets(step?.target ?? null).map(padRect);
@@ -158,17 +155,8 @@ const TourOverlay = () => {
     setHoles((prev) => (sameRects(prev, merged) ? prev : merged));
   }, [step]);
 
-  const checkComplete = useCallback(() => {
-    setIsStepComplete(step?.isComplete ? step.isComplete({ tab }) : true);
-  }, [step, tab]);
-
-  useLayoutEffect(() => {
-    if (isDemoing) checkComplete();
-  }, [isDemoing, checkComplete]);
-
   // The target may live on a tab that is only mounted after this step's tab
-  // switch renders, and its layout can shift (dropdowns, new layers, live
-  // training), so keep re-measuring while the tour is open.
+  // switch renders, so measure once that layout has settled.
   useEffect(() => {
     if (!isDemoing || !step) return;
 
@@ -179,20 +167,15 @@ const TourOverlay = () => {
       });
       measure();
     });
-    const interval = setInterval(() => {
-      measure();
-      checkComplete();
-    }, 150);
     window.addEventListener("resize", measure);
     window.addEventListener("scroll", measure, true);
 
     return () => {
       cancelAnimationFrame(frame);
-      clearInterval(interval);
       window.removeEventListener("resize", measure);
       window.removeEventListener("scroll", measure, true);
     };
-  }, [isDemoing, step, measure, checkComplete]);
+  }, [isDemoing, step, measure]);
 
   useLayoutEffect(() => {
     if (!cardRef.current) return;
@@ -202,19 +185,17 @@ const TourOverlay = () => {
     );
   });
 
-  const canAdvance = !taskRequired || isStepComplete;
-
   useEffect(() => {
     if (!isDemoing) return;
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") close();
       if (isTypingTarget(e.target)) return;
-      if (e.key === "ArrowRight" && canAdvance) next();
+      if (e.key === "ArrowRight") next();
       else if (e.key === "ArrowLeft") prev();
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [isDemoing, next, prev, close, canAdvance]);
+  }, [isDemoing, next, prev, close]);
 
   if (!isDemoing || !step) return null;
 
@@ -233,8 +214,6 @@ const TourOverlay = () => {
 
   return (
     <>
-      {/* Dims the page and blocks clicks everywhere except the highlighted holes.
-          Sits below dnd-kit's DragOverlay (z-index 999) so dragged blocks stay visible. */}
       <div
         className="fixed inset-0 z-[998] bg-black/60"
         style={{ clipPath }}
@@ -243,11 +222,7 @@ const TourOverlay = () => {
       {holes.map((hole, i) => (
         <div
           key={i}
-          className={`pointer-events-none fixed z-[1000] rounded-xl ring-2 transition-all duration-200 ease-out ${
-            step.interactive && !isStepComplete
-              ? "animate-pulse ring-blue-400"
-              : "ring-blue-500"
-          }`}
+          className="pointer-events-none fixed z-[1000] rounded-xl ring-2 ring-blue-500 transition-all duration-200 ease-out"
           style={{
             top: hole.top,
             left: hole.left,
@@ -256,20 +231,11 @@ const TourOverlay = () => {
           }}
         />
       ))}
-      <TutorialDemo
-        key={`demo-${step.id}`}
-        actions={step.demo}
-        active={!taskRequired || !isStepComplete}
-        maxLoops={taskRequired ? Infinity : 2}
-      />
       <DemoCard
         ref={cardRef}
         key={step.id}
         title={step.title}
         description={step.description}
-        task={step.task}
-        taskRequired={taskRequired}
-        taskDone={isStepComplete}
         currIdx={stepIdx}
         maxIdx={TUTORIAL_STEPS.length - 1}
         prev={stepIdx > 0}
@@ -279,6 +245,7 @@ const TourOverlay = () => {
         top={top}
         left={left}
         closeDemo={close}
+        sketch={step.sketch}
       />
     </>
   );

@@ -4,13 +4,21 @@ import {
   ReactNode,
   useCallback,
   useContext,
-  useEffect,
+  useRef,
   useState,
 } from "react";
-import { AppTabs } from "~/types/index";
-import TUTORIAL_STEPS from "~/util/TUTORIAL_STEPS";
+import { AppTabs, UILayer } from "~/types/index";
+import { useBoardStore } from "~/state/boardStore";
+import TUTORIAL_STEPS, {
+  createPimaLessonBlocks,
+  isLayerLessonStep,
+} from "~/util/TUTORIAL_STEPS";
 
-const TUTORIAL_SEEN_KEY = "scraply_tutorial_seen";
+interface CanvasSnapshot {
+  blocks: UILayer[];
+  dataset: string;
+  architecture: string;
+}
 
 interface DemoContextValue {
   isDemoing: boolean;
@@ -34,18 +42,61 @@ const DemoContext = createContext<DemoContextValue>({
   setTab: () => {},
 });
 
+const applyCanvas = (
+  dataset: string,
+  architecture: string,
+  blocks: UILayer[],
+) => {
+  const store = useBoardStore.getState();
+  const willSync =
+    store.selectedDataset !== dataset ||
+    store.selectedArchitecture !== architecture;
+  if (willSync) store.armArchitectureSyncSuppress();
+  store.setSelectedDataset(dataset);
+  store.setSelectedArchitecture(architecture);
+  store.loadDefaultConfig(blocks);
+};
+
 const DemoProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [isDemoing, setIsDemoing] = useState(false);
   const [stepIdx, setStepIdx] = useState(0);
   const [tab, setTab] = useState<AppTabs>(AppTabs.LAYERS);
+  const stepIdxRef = useRef(0);
+  const snapshotRef = useRef<CanvasSnapshot | null>(null);
+  stepIdxRef.current = stepIdx;
 
-  const goToStep = useCallback((idx: number) => {
-    const step = TUTORIAL_STEPS[idx];
-    if (!step) return;
-    if (step.tab) setTab(step.tab);
-    step.onEnter?.();
-    setStepIdx(idx);
+  const loadLesson = useCallback(() => {
+    const store = useBoardStore.getState();
+    if (!snapshotRef.current) {
+      snapshotRef.current = {
+        blocks: structuredClone(store.canvasBlocks) as UILayer[],
+        dataset: store.selectedDataset,
+        architecture: store.selectedArchitecture,
+      };
+    }
+    applyCanvas("pima", "custom", createPimaLessonBlocks());
   }, []);
+
+  const restoreSnapshot = useCallback(() => {
+    const snap = snapshotRef.current;
+    snapshotRef.current = null;
+    if (!snap) return;
+    applyCanvas(snap.dataset, snap.architecture, snap.blocks);
+  }, []);
+
+  const goToStep = useCallback(
+    (idx: number) => {
+      const step = TUTORIAL_STEPS[idx];
+      if (!step) return;
+      const prev = TUTORIAL_STEPS[stepIdxRef.current];
+      if (step.tab) setTab(step.tab);
+      if (step.id === "layer-inputs" && !isLayerLessonStep(prev?.id)) {
+        loadLesson();
+      }
+      setStepIdx(idx);
+    },
+    [loadLesson],
+  );
 
   const start = useCallback(() => {
     goToStep(0);
@@ -54,10 +105,8 @@ const DemoProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
 
   const close = useCallback(() => {
     setIsDemoing(false);
-    try {
-      localStorage.setItem(TUTORIAL_SEEN_KEY, "1");
-    } catch {}
-  }, []);
+    restoreSnapshot();
+  }, [restoreSnapshot]);
 
   const next = useCallback(() => {
     if (stepIdx >= TUTORIAL_STEPS.length - 1) close();
@@ -67,12 +116,6 @@ const DemoProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const prev = useCallback(() => {
     if (stepIdx > 0) goToStep(stepIdx - 1);
   }, [stepIdx, goToStep]);
-
-  useEffect(() => {
-    try {
-      if (!localStorage.getItem(TUTORIAL_SEEN_KEY)) start();
-    } catch {}
-  }, [start]);
 
   return (
     <DemoContext.Provider

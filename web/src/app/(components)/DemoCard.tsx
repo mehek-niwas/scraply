@@ -1,32 +1,23 @@
 import { forwardRef } from "react";
-import { motion, useDragControls } from "framer-motion";
+import { motion } from "framer-motion";
 import {
   RxCross2 as CrossIcon,
   RxArrowLeft as LeftIcon,
   RxArrowRight as RightIcon,
-  RxDragHandleDots2 as GripIcon,
 } from "react-icons/rx";
-import { FaCheckCircle as CheckIcon } from "react-icons/fa";
+import NeuronSketch from "./NeuronSketch";
+import type { SketchFocus } from "~/util/TUTORIAL_STEPS";
 
 const NavigationButton: React.FC<{
   children: React.ReactNode;
   onClick: () => void;
   title?: string;
-  disabled?: boolean;
-  highlight?: boolean;
-}> = ({ children, onClick, title, disabled, highlight }) => {
+}> = ({ children, onClick, title }) => {
   return (
     <button
       onClick={onClick}
       title={title}
-      disabled={disabled}
-      className={`mx-1 rounded-lg px-2 py-1 transition-colors ${
-        disabled
-          ? "cursor-not-allowed bg-zinc-800 text-zinc-500"
-          : highlight
-            ? "bg-blue-600 hover:bg-blue-500"
-            : "bg-zinc-600 hover:bg-zinc-500"
-      }`}
+      className="mx-1 rounded-lg bg-zinc-600 px-2 py-1 transition-colors hover:bg-zinc-500"
     >
       {children}
     </button>
@@ -36,9 +27,6 @@ const NavigationButton: React.FC<{
 interface DemoCardProps {
   title: string;
   description: string;
-  task?: string;
-  taskRequired: boolean;
-  taskDone: boolean;
   currIdx: number;
   maxIdx: number;
   prev: boolean;
@@ -48,6 +36,7 @@ interface DemoCardProps {
   top: number;
   left: number;
   closeDemo: () => void;
+  sketch?: SketchFocus;
 }
 
 const DemoCard = forwardRef<HTMLDivElement, DemoCardProps>(
@@ -55,9 +44,6 @@ const DemoCard = forwardRef<HTMLDivElement, DemoCardProps>(
     {
       title,
       description,
-      task,
-      taskRequired,
-      taskDone,
       currIdx,
       maxIdx,
       prev,
@@ -67,64 +53,27 @@ const DemoCard = forwardRef<HTMLDivElement, DemoCardProps>(
       top,
       left,
       closeDemo,
+      sketch,
     },
     ref,
   ) => {
-    const dragControls = useDragControls();
-    const locked = taskRequired && !taskDone;
-
     return (
       <motion.div
         ref={ref}
-        drag
-        dragControls={dragControls}
-        dragListener={false}
-        dragMomentum={false}
         initial={{ opacity: 0, top, left }}
         animate={{ opacity: 1, top, left }}
         exit={{ opacity: 0 }}
         transition={{ duration: 0.15, ease: "easeOut" }}
         className="fixed z-[1001] w-80 rounded-xl bg-zinc-700 px-3 py-2 text-white shadow-2xl ring ring-zinc-600"
       >
-        <div
-          className="mb-2 flex cursor-move touch-none select-none items-start justify-between"
-          onPointerDown={(e) => dragControls.start(e)}
-          title="Drag to move"
-        >
-          <div className="flex items-start gap-1">
-            <GripIcon className="mt-1.5 shrink-0 text-zinc-400" />
-            <div className="text-lg font-semibold">{title}</div>
-          </div>
+        <div className="mb-2 flex items-start justify-between">
+          <div className="text-lg font-semibold">{title}</div>
           <NavigationButton onClick={closeDemo} title="Close tutorial">
             <CrossIcon />
           </NavigationButton>
         </div>
         <div className="text-sm text-zinc-200">{description}</div>
-        {task && (
-          <div
-            className={`mt-3 flex items-start gap-2 rounded-lg p-2 text-sm ring-1 transition-colors ${
-              taskDone && taskRequired
-                ? "bg-emerald-900/40 text-emerald-100 ring-emerald-600/60"
-                : "bg-blue-900/40 text-blue-100 ring-blue-600/60"
-            }`}
-          >
-            {taskRequired && taskDone ? (
-              <CheckIcon className="mt-0.5 shrink-0 text-emerald-400" />
-            ) : (
-              <span className="mt-1 h-2.5 w-2.5 shrink-0 animate-pulse rounded-full bg-blue-400" />
-            )}
-            <div>
-              <div className="text-xs font-semibold uppercase tracking-wide opacity-80">
-                {taskRequired && taskDone
-                  ? "Done!"
-                  : taskRequired
-                    ? "Your turn"
-                    : "Try it"}
-              </div>
-              {task}
-            </div>
-          </div>
-        )}
+        {sketch && <NeuronSketch focus={sketch} />}
         <div className="my-4 flex items-center justify-center text-sm">
           {prev && (
             <NavigationButton onClick={onPrev} title="Previous">
@@ -135,12 +84,7 @@ const DemoCard = forwardRef<HTMLDivElement, DemoCardProps>(
             {currIdx + 1} of {maxIdx + 1}
           </div>
           {next ? (
-            <NavigationButton
-              onClick={onNext}
-              title={locked ? "Complete the task to continue" : "Next"}
-              disabled={locked}
-              highlight={taskRequired && taskDone}
-            >
+            <NavigationButton onClick={onNext} title="Next">
               <RightIcon />
             </NavigationButton>
           ) : (
@@ -149,16 +93,14 @@ const DemoCard = forwardRef<HTMLDivElement, DemoCardProps>(
             </NavigationButton>
           )}
         </div>
-        {locked && next && (
-          <div className="-mt-2 mb-1 text-center">
-            <button
-              onClick={onNext}
-              className="text-xs text-zinc-400 underline-offset-2 hover:text-zinc-200 hover:underline"
-            >
-              Skip this step
-            </button>
-          </div>
-        )}
+        <div className="-mt-2 mb-1 text-center">
+          <button
+            onClick={closeDemo}
+            className="text-xs text-zinc-400 underline-offset-2 hover:text-zinc-200 hover:underline"
+          >
+            Skip
+          </button>
+        </div>
       </motion.div>
     );
   },

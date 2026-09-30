@@ -121,10 +121,7 @@ const OverlayBlock = ({ id, label, color, block }: OverlayBlockProps) => {
   };
 
   return (
-    <div
-      className="group relative flex items-center gap-2"
-      data-layer-label={label}
-    >
+    <div className="group relative flex items-center gap-2">
       <div
         className="w-full min-w-80 flex-1 cursor-grab rounded-lg border-l-4 p-5 text-white shadow-xl transition-all duration-100 hover:shadow-2xl hover:brightness-110"
         style={{
@@ -149,7 +146,6 @@ const OverlayBlock = ({ id, label, color, block }: OverlayBlockProps) => {
                   className="h-8 w-12 rounded-md border border-gray-300 bg-white text-center text-sm text-gray-900 shadow-sm outline-none transition-all duration-200 focus:border-blue-500 focus:ring-1"
                   style={{ "--accent-color": color } as React.CSSProperties}
                   type="number"
-                  data-field="in"
                   value={block.params.inputNeurons}
                   onChange={(e) => {
                     const newInputNeurons = parseInt(e.target.value);
@@ -163,7 +159,6 @@ const OverlayBlock = ({ id, label, color, block }: OverlayBlockProps) => {
                   className="h-8 w-12 rounded-md border border-gray-300 bg-white text-center text-sm text-gray-900 shadow-sm outline-none transition-all duration-200 focus:border-blue-500 focus:ring-1"
                   style={{ "--accent-color": color } as React.CSSProperties}
                   type="number"
-                  data-field="out"
                   value={block.params.outputNeurons}
                   onChange={(e) => {
                     const newOutputNeurons = parseInt(e.target.value);
@@ -195,7 +190,6 @@ const OverlayBlock = ({ id, label, color, block }: OverlayBlockProps) => {
               Activation
             </label>
             <select
-              data-field="activation"
               className="w-full cursor-pointer rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm outline-none transition-all duration-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-400"
               value={block.activationFunction as string}
               onChange={(e) => {

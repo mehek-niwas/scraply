@@ -31,10 +31,14 @@ interface BoardState {
   activeBlock: UILayer | null;
   selectedDataset: string;
   selectedArchitecture: string;
+  /** When set, the next architecture/dataset sync in Board is skipped once. */
+  suppressArchitectureSync: boolean;
 
   // Actions
   setSelectedDataset: (dataset: string) => void;
   setSelectedArchitecture: (architecture: string) => void;
+  armArchitectureSyncSuppress: () => void;
+  releaseArchitectureSyncSuppress: () => void;
   addBlock: (block: any) => void;
   updateBlock: (id: string, updates: any) => void;
   updateInputNeurons: (id: string, inputNeurons: number) => void;
@@ -55,6 +59,7 @@ export const useBoardStore = create<BoardState>()(
     activeBlock: null,
     selectedDataset: DATASETS[0]!.inputName,
     selectedArchitecture: "custom",
+    suppressArchitectureSync: false,
 
     setSelectedDataset: (dataset: string) => {
       set((state) => {
@@ -65,6 +70,18 @@ export const useBoardStore = create<BoardState>()(
     setSelectedArchitecture: (architecture: string) => {
       set((state) => {
         state.selectedArchitecture = architecture;
+      });
+    },
+
+    armArchitectureSyncSuppress: () => {
+      set((state) => {
+        state.suppressArchitectureSync = true;
+      });
+    },
+
+    releaseArchitectureSyncSuppress: () => {
+      set((state) => {
+        state.suppressArchitectureSync = false;
       });
     },
 

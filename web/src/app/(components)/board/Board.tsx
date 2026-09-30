@@ -52,6 +52,13 @@ const Board = () => {
   const availableArchitectures = getAvailableArchitectures(selectedDataset);
 
   useEffect(() => {
+    // A lesson load or restore sets the canvas itself. Skip the automatic
+    // clear/load once so that write is not wiped.
+    if (useBoardStore.getState().suppressArchitectureSync) {
+      useBoardStore.getState().releaseArchitectureSyncSuppress();
+      return;
+    }
+
     // If current architecture is not available for this dataset, reset to the first available one
     if (!availableArchitectures.includes(selectedArchitecture)) {
       setSelectedArchitecture(availableArchitectures[0] || "custom");
