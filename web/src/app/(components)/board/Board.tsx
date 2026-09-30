@@ -9,6 +9,7 @@ import OutputsTab from "./outputs/OutputsTab";
 import { useBoardStore } from "~/state/boardStore";
 import { useDemo } from "~/state/DemoContext";
 import TourOverlay from "../TourOverlay";
+import WelcomeScreen from "../WelcomeScreen";
 import {
   generateUniqueBlocks,
   generateLeNetBlocks,
@@ -251,6 +252,7 @@ const Board = () => {
 
         {Tabs[tab]}
       </div>
+      <WelcomeScreen />
       <TourOverlay />
     </div>
   );

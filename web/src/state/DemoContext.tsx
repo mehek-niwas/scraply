@@ -23,8 +23,10 @@ interface CanvasSnapshot {
 
 interface DemoContextValue {
   isDemoing: boolean;
+  welcomeOpen: boolean;
   stepIdx: number;
   start: () => void;
+  dismissWelcome: () => void;
   next: () => void;
   prev: () => void;
   close: () => void;
@@ -35,8 +37,10 @@ interface DemoContextValue {
 
 const DemoContext = createContext<DemoContextValue>({
   isDemoing: false,
+  welcomeOpen: false,
   stepIdx: 0,
   start: () => {},
+  dismissWelcome: () => {},
   next: () => {},
   prev: () => {},
   close: () => {},
@@ -80,6 +84,7 @@ const applyCanvas = (
 
 const DemoProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [isDemoing, setIsDemoing] = useState(false);
+  const [welcomeOpen, setWelcomeOpen] = useState(false);
   const [stepIdx, setStepIdx] = useState(0);
   const [tab, setTab] = useState<AppTabs>(AppTabs.LAYERS);
   const stepIdxRef = useRef(0);
@@ -123,13 +128,20 @@ const DemoProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   );
 
   const start = useCallback(() => {
+    markTutorialSeen();
+    setWelcomeOpen(false);
     goToStep(0);
     setIsDemoing(true);
   }, [goToStep]);
 
+  const dismissWelcome = useCallback(() => {
+    markTutorialSeen();
+    setWelcomeOpen(false);
+  }, []);
+
   useEffect(() => {
-    if (!hasSeenTutorial()) start();
-  }, [start]);
+    if (!hasSeenTutorial()) setWelcomeOpen(true);
+  }, []);
 
   const close = useCallback(() => {
     markTutorialSeen();
@@ -150,8 +162,10 @@ const DemoProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     <DemoContext.Provider
       value={{
         isDemoing,
+        welcomeOpen,
         stepIdx,
         start,
+        dismissWelcome,
         next,
         prev,
         close,
