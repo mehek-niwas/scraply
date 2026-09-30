@@ -4,6 +4,7 @@ import {
   ReactNode,
   useCallback,
   useContext,
+  useEffect,
   useRef,
   useState,
 } from "react";
@@ -43,6 +44,24 @@ const DemoContext = createContext<DemoContextValue>({
   tab: AppTabs.LAYERS,
   setTab: () => {},
 });
+
+const TUTORIAL_SEEN_KEY = "scraply_tutorial_seen";
+
+const hasSeenTutorial = () => {
+  try {
+    return localStorage.getItem(TUTORIAL_SEEN_KEY) === "1";
+  } catch {
+    return false;
+  }
+};
+
+const markTutorialSeen = () => {
+  try {
+    localStorage.setItem(TUTORIAL_SEEN_KEY, "1");
+  } catch {
+    // Private browsing can block storage. The tour still closes.
+  }
+};
 
 const applyCanvas = (
   dataset: string,
@@ -108,7 +127,12 @@ const DemoProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     setIsDemoing(true);
   }, [goToStep]);
 
+  useEffect(() => {
+    if (!hasSeenTutorial()) start();
+  }, [start]);
+
   const close = useCallback(() => {
+    markTutorialSeen();
     setIsDemoing(false);
     restoreSnapshot();
   }, [restoreSnapshot]);

@@ -128,7 +128,7 @@ const TUTORIAL_STEPS: TutorialStep[] = [
     id: "layer-sigmoid",
     title: "Sigmoid on layer 2",
     description:
-      "On the last layer, change Activation to Sigmoid. That keeps the answer between 0 and 1.",
+      "Open Activation on the last layer and choose Sigmoid from the menu. That keeps the answer between 0 and 1.",
     target: ["layer-canvas"],
     placement: "corner",
     tab: AppTabs.LAYERS,

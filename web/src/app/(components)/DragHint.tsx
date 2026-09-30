@@ -6,6 +6,15 @@ import type { TutorialHint } from "~/util/TUTORIAL_STEPS";
 
 const LAYER_ONE = "lesson-linear-1";
 const LAYER_TWO = "lesson-linear-2";
+const ACTIVATION_OPTIONS = [
+  "ReLU",
+  "Sigmoid",
+  "Tanh",
+  "Softmax",
+  "LeakyReLU",
+  "PReLU",
+  "No Activation",
+];
 
 const DragHint = ({
   kind,
@@ -17,6 +26,7 @@ const DragHint = ({
   const cursorRef = useRef<HTMLDivElement>(null);
   const ghostRef = useRef<HTMLDivElement>(null);
   const bubbleRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
   const onDoneRef = useRef(onDone);
   onDoneRef.current = onDone;
 
@@ -24,7 +34,8 @@ const DragHint = ({
     const cursor = cursorRef.current;
     const ghost = ghostRef.current;
     const bubble = bubbleRef.current;
-    if (!cursor || !ghost || !bubble) return;
+    const menu = menuRef.current;
+    if (!cursor || !ghost || !bubble || !menu) return;
 
     let cancelled = false;
     let active = true;
@@ -199,14 +210,76 @@ const DragHint = ({
 
     const setSigmoid = async () => {
       const activations = fields("activation");
-      const last = activations[activations.length - 1];
-      if (last) {
-        await showValue(last, "Sigmoid");
-        useBoardStore
-          .getState()
-          .updateBlock(LAYER_TWO, { activationFunction: "Sigmoid" });
-        await hideBubble();
+      const select = activations[activations.length - 1];
+      if (!select) {
+        await tween(cursor, { opacity: 0 }, { duration: 0.2 });
+        return;
       }
+
+      select.scrollIntoView({ block: "center", inline: "nearest" });
+      const rect = select.getBoundingClientRect();
+      const rowHeight = 32;
+      const menuHeight = ACTIVATION_OPTIONS.length * rowHeight + 8;
+      let menuTop = rect.bottom + 4;
+      if (menuTop + menuHeight > window.innerHeight - 8) {
+        menuTop = rect.top - menuHeight;
+      }
+      if (menuTop < 8) menuTop = 8;
+      menu.replaceChildren(
+        ...ACTIVATION_OPTIONS.map((label) => {
+          const row = document.createElement("div");
+          row.dataset.option = label;
+          row.className = "flex h-8 items-center px-3";
+          row.textContent = label;
+          return row;
+        }),
+      );
+      menu.style.left = `${rect.left}px`;
+      menu.style.top = `${menuTop}px`;
+      menu.style.width = `${Math.max(rect.width, 160)}px`;
+
+      const click = async () => {
+        await tween(cursor, { scale: 0.86 }, { duration: 0.1 });
+        await tween(cursor, { scale: 1 }, { duration: 0.1 });
+      };
+
+      await tween(
+        cursor,
+        {
+          x: rect.left + Math.min(rect.width / 2, 72),
+          y: rect.top + rect.height / 2,
+          opacity: 1,
+          scale: 1,
+        },
+        { duration: 0.4, ease: "easeInOut" },
+      );
+      await click();
+      await tween(menu, { opacity: 1 }, { duration: 0.12 });
+      await sleep(420);
+
+      const row = menu.querySelector<HTMLElement>('[data-option="Sigmoid"]');
+      if (row) {
+        const rowRect = row.getBoundingClientRect();
+        await tween(
+          cursor,
+          {
+            x: rowRect.left + 28,
+            y: rowRect.top + rowRect.height / 2,
+          },
+          { duration: 0.45, ease: "easeInOut" },
+        );
+        row.className =
+          "flex h-8 items-center bg-blue-100 px-3 font-semibold text-blue-900";
+        await sleep(420);
+        await click();
+      }
+
+      useBoardStore
+        .getState()
+        .updateBlock(LAYER_TWO, { activationFunction: "Sigmoid" });
+      await sleep(280);
+      await tween(menu, { opacity: 0 }, { duration: 0.15 });
+      menu.replaceChildren();
       await tween(cursor, { opacity: 0 }, { duration: 0.2 });
     };
 
@@ -226,6 +299,7 @@ const DragHint = ({
       stop();
       window.removeEventListener("pointerdown", stop, true);
       ghost.replaceChildren();
+      menu.replaceChildren();
     };
   }, [kind]);
 
@@ -238,6 +312,11 @@ const DragHint = ({
       <div
         ref={bubbleRef}
         className="pointer-events-none fixed z-[1003] flex items-center justify-center rounded-md border border-blue-500 bg-white text-sm font-semibold text-gray-900 opacity-0 shadow-lg"
+      />
+      <div
+        ref={menuRef}
+        className="pointer-events-none fixed z-[1003] overflow-hidden rounded-md border border-gray-200 bg-white py-1 text-left text-sm text-gray-900 shadow-xl"
+        style={{ opacity: 0 }}
       />
       <div
         ref={cursorRef}
