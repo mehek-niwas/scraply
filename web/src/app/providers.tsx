@@ -2,6 +2,7 @@
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "~/util/queryClient";
 import { DemoProvider } from "~/state/DemoContext";
+import { SocketProvider } from "~/hooks/useSocket";
 
 interface ProvidersProps {
   children: React.ReactNode;
@@ -10,7 +11,9 @@ interface ProvidersProps {
 export function Providers({ children }: ProvidersProps) {
   return (
     <QueryClientProvider client={queryClient}>
-      <DemoProvider>{children}</DemoProvider>
+      <SocketProvider>
+        <DemoProvider>{children}</DemoProvider>
+      </SocketProvider>
     </QueryClientProvider>
   );
 }

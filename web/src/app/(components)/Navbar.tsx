@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { AiOutlineStar, AiOutlineQuestionCircle } from "react-icons/ai";
 import { useServerStatus } from "~/hooks/useServerStatus";
 import { useDemo } from "~/state/DemoContext";
@@ -9,10 +10,10 @@ const Navbar = () => {
 
   return (
     <div className="flex justify-between bg-zinc-800 text-white">
-      <div className="flex">
-        <img src="favicon.png" className="my-auto ml-4 h-8" alt="" />
+      <Link href="/" className="flex">
+        <img src="/favicon.png" className="my-auto ml-4 h-8" alt="" />
         <div className="mx-4 py-4 pr-7 font-semibold">scraply</div>
-      </div>
+      </Link>
       <div className="flex items-center">
         <div
           className="mx-4 flex cursor-pointer items-center gap-2 rounded px-2 py-1 transition-colors duration-200 hover:bg-zinc-700"

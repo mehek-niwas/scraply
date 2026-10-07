@@ -7,7 +7,8 @@ import { Providers } from "./providers";
 
 export const metadata: Metadata = {
   title: "scraply",
-  description: "",
+  description:
+    "A playground for small neural networks. Drag layers, train a model, and read the results.",
   icons: [{ rel: "icon", url: "favicon.png" }],
 };
 

@@ -1,4 +1,13 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  createContext,
+  createElement,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import io, { Socket } from "socket.io-client";
 import { API_CONFIG, SOCKET_CONFIG } from "~/util/config";
 
@@ -67,7 +76,11 @@ interface UseSocketReturn {
   checkTrainingStatus: () => void;
 }
 
-export const useSocket = (): UseSocketReturn => {
+const SocketContext = createContext<UseSocketReturn | null>(null);
+
+// One connection for the whole app. The navbar and the training tab both
+// read this; a second io() call would open another socket and steal the job.
+export function SocketProvider({ children }: { children: ReactNode }) {
   const [isConnected, setIsConnected] = useState(false);
   const [trainingProgress, setTrainingProgress] =
     useState<TrainingProgress | null>(null);
@@ -431,7 +444,7 @@ export const useSocket = (): UseSocketReturn => {
     }
   }, []);
 
-  return {
+  const value: UseSocketReturn = {
     isConnected,
     trainingProgress,
     trainingPhase,
@@ -447,4 +460,14 @@ export const useSocket = (): UseSocketReturn => {
     resetTraining,
     checkTrainingStatus,
   };
-};
+
+  return createElement(SocketContext.Provider, { value }, children);
+}
+
+export function useSocket(): UseSocketReturn {
+  const socket = useContext(SocketContext);
+  if (!socket) {
+    throw new Error("useSocket must be used within SocketProvider");
+  }
+  return socket;
+}

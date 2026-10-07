@@ -1,8 +1,8 @@
 "use client";
 import Board from "./(components)/board/Board";
 
-const Landing = () => {
+const Home = () => {
   return <Board />;
 };
 
-export default Landing;
+export default Home;
