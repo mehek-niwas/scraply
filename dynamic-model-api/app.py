@@ -17,6 +17,7 @@ import uuid
 IMAGE_EPOCHS_MAX = 5
 MAX_CONCURRENT_JOBS = 2
 JOB_TTL_SECONDS = 15 * 60
+MAX_TRAINING_SECONDS = 10 * 60
 BUSY_TRAINING_MESSAGE = (
     "Too many users are training right now. Please try again in a moment."
 )
@@ -134,6 +135,13 @@ def _cancel_job_timer(job):
     job["disconnect_timer_task"] = None
 
 
+def _cancel_training_deadline(job):
+    if not job:
+        return
+    _cancel_task(job.get("deadline_task"))
+    job["deadline_task"] = None
+
+
 def _schedule_job_expiry(job):
     """Drop a finished job after TTL so the in-memory map cannot grow forever."""
     if not job:
@@ -155,6 +163,44 @@ def _schedule_job_expiry(job):
     job["expiry_task"] = asyncio.create_task(_expire())
 
 
+def _schedule_training_deadline(job):
+    """Stop and drop a job that is still training after MAX_TRAINING_SECONDS."""
+    if not job:
+        return
+    _cancel_training_deadline(job)
+
+    async def _deadline():
+        await asyncio.sleep(MAX_TRAINING_SECONDS)
+        job_id = job.get("job_id")
+        stored = jobs.get(job_id)
+        if stored is not job or not stored.get("is_training") or stored.get("time_limited"):
+            return
+        minutes = MAX_TRAINING_SECONDS // 60
+        _log(f"Dropping job; training exceeded {minutes} minutes", job_id=job_id)
+        stored["time_limited"] = True
+        stored["is_training"] = False
+        stored["is_paused"] = False
+        stored["pause_confirmed"] = False
+        stored["current_progress"] = None
+        stored["completed_results"] = None
+        _cancel_job_timer(stored)
+        await _emit_job(
+            stored,
+            "training_stopped",
+            {
+                "message": (
+                    f"Training stopped because it ran longer than {minutes} minutes"
+                )
+            },
+        )
+        owner = stored.get("owner_sid")
+        if owner and sid_to_job.get(owner) == job_id:
+            sid_to_job.pop(owner, None)
+        jobs.pop(job_id, None)
+
+    job["deadline_task"] = asyncio.create_task(_deadline())
+
+
 def _create_job(owner_sid: str) -> dict:
     job_id = str(uuid.uuid4())
     job = {
@@ -169,6 +215,8 @@ def _create_job(owner_sid: str) -> dict:
         "completed_results": None,
         "disconnect_timer_task": None,
         "expiry_task": None,
+        "deadline_task": None,
+        "time_limited": False,
         "task": None,
         "room": _job_room(job_id),
     }
@@ -210,6 +258,7 @@ async def _drop_sid_job(sid: str, remove_job: bool = False):
         sid_to_job.pop(sid, None)
     if remove_job:
         _cancel_job_timer(job)
+        _cancel_training_deadline(job)
         _cancel_task(job.get("expiry_task"))
         jobs.pop(job_id, None)
 
@@ -296,6 +345,7 @@ async def _begin_training(sid: str, data: dict) -> dict:
         job["task"] = asyncio.create_task(
             run_training_background(t, n_epochs, batch_size, job)
         )
+        _schedule_training_deadline(job)
         return job
     except HTTPException:
         await _drop_sid_job(sid, remove_job=True)
@@ -357,6 +407,7 @@ async def stop_job_on_disconnect(job_id: str):
     job["is_paused"] = False
     job["pause_confirmed"] = False
     job["current_progress"] = None
+    _cancel_training_deadline(job)
     _schedule_job_expiry(job)
 
 
@@ -467,6 +518,7 @@ async def stop_training(sid):
         job["current_progress"] = None
         job["completed_results"] = None
         _cancel_job_timer(job)
+        _cancel_training_deadline(job)
         _schedule_job_expiry(job)
         _log("Stop requested", job_id=job.get("job_id"), sid=sid)
         await _emit_job(job, "training_stopped", {"message": "Training has been stopped"})
@@ -500,7 +552,12 @@ async def run_training_background(t, n_epochs, batch_size, job):
         results = await t.train_test_log_stream_async(
             n_epochs, batch_size, sio, job, room=room
         )
+        if job.get("time_limited"):
+            return
         job["is_training"] = False
+        _cancel_training_deadline(job)
+        if job.get("time_limited"):
+            return
         job["current_progress"] = None
         job["is_paused"] = False
         job["pause_confirmed"] = False
@@ -512,8 +569,13 @@ async def run_training_background(t, n_epochs, batch_size, job):
         _schedule_job_expiry(job)
         _log("Training completed", job_id=job.get("job_id"))
     except Exception as e:
+        if job.get("time_limited"):
+            return
         _log(f"Training failed: {e}", job_id=job.get("job_id"))
         job["is_training"] = False
+        _cancel_training_deadline(job)
+        if job.get("time_limited"):
+            return
         job["current_progress"] = None
         job["is_paused"] = False
         job["pause_confirmed"] = False
