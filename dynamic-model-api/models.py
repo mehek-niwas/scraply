@@ -19,10 +19,50 @@ from params import (
     LOSSES,
     OPTIMIZERS,
 )
+import math
 import os
 import copy
 import tempfile
 import numpy as np
+
+
+def _cgroup_cpu_quota():
+    """CPUs this process is allowed, from the container limit. None when unlimited."""
+    try:
+        quota, period = open("/sys/fs/cgroup/cpu.max").read().split()
+        if quota != "max":
+            return int(quota) / int(period)
+    except OSError:
+        pass
+    try:
+        quota = int(open("/sys/fs/cgroup/cpu/cpu.cfs_quota_us").read())
+        period = int(open("/sys/fs/cgroup/cpu/cpu.cfs_period_us").read())
+        if quota > 0 and period > 0:
+            return quota / period
+    except OSError:
+        pass
+    return None
+
+
+def _configure_cpu_threads():
+    """Match PyTorch to the container CPUs. The host count oversubscribes a small Railway CPU."""
+    quota = _cgroup_cpu_quota()
+    if quota is not None:
+        count = max(1, math.ceil(quota))
+    else:
+        try:
+            count = max(1, len(os.sched_getaffinity(0)))
+        except (AttributeError, OSError):
+            count = max(1, os.cpu_count() or 1)
+    torch.set_num_threads(count)
+    try:
+        torch.set_num_interop_threads(1)
+    except RuntimeError:
+        pass
+    print(f"PyTorch using {count} CPU thread(s)")
+
+
+_configure_cpu_threads()
 
 
 def _job_log(active_training, message: str):
