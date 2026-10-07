@@ -12,7 +12,7 @@ export const TRAINING_DEFAULTS = {
   },
   batchSize: {
     min: 1,
-    max: 100,
+    max: 256,
     default: 10,
   },
 };
@@ -49,7 +49,7 @@ export const IMAGE_TRAINING_DEFAULTS = {
   optimizer: "Adam" as const,
   learningRate: TRAINING_DEFAULTS.learningRate.default,
   epochs: 2,
-  batchSize: 64,
+  batchSize: 128,
   runName: "",
 };
 

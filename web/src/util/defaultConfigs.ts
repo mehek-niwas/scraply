@@ -21,7 +21,7 @@ export function getBlockByLabel(label: string) {
 
 // Default layer configurations for each dataset
 export const DEFAULT_DATASET_CONFIGS: Record<string, UILayer[]> = {
-  // MNIST: 28x28 grayscale images, 10 classes
+  // MNIST: small CPU network. 26x26x8 -> pool 13x13x8 -> 11x11x16 -> pool 5x5x16.
   MNIST: [
     {
       id: `conv-${Date.now()}-1`,
@@ -29,10 +29,20 @@ export const DEFAULT_DATASET_CONFIGS: Record<string, UILayer[]> = {
       activationFunction: "ReLU",
       params: {
         inputNeurons: 1,
-        outputNeurons: 32,
+        outputNeurons: 8,
         dimension: 2 as 2,
         kernelSize: 3,
         stride: 1,
+        padding: 0,
+      },
+    } as const,
+    {
+      id: `maxpool-${Date.now()}-1`,
+      ...getBlockMeta("MaxPool"),
+      params: {
+        dimension: 2 as 2,
+        kernelSize: 2,
+        stride: 2,
         padding: 0,
       },
     } as const,
@@ -41,8 +51,8 @@ export const DEFAULT_DATASET_CONFIGS: Record<string, UILayer[]> = {
       ...getBlockMeta("Conv"),
       activationFunction: "ReLU",
       params: {
-        inputNeurons: 32,
-        outputNeurons: 64,
+        inputNeurons: 8,
+        outputNeurons: 16,
         dimension: 2 as 2,
         kernelSize: 3,
         stride: 1,
@@ -50,7 +60,7 @@ export const DEFAULT_DATASET_CONFIGS: Record<string, UILayer[]> = {
       },
     } as const,
     {
-      id: `maxpool-${Date.now()}`,
+      id: `maxpool-${Date.now()}-2`,
       ...getBlockMeta("MaxPool"),
       params: {
         dimension: 2 as 2,
@@ -69,7 +79,7 @@ export const DEFAULT_DATASET_CONFIGS: Record<string, UILayer[]> = {
     {
       id: `flatten-${Date.now()}`,
       ...getBlockMeta("Flatten"),
-      inputNeurons: 9216,
+      inputNeurons: 400,
       startDimension: 1,
       endDimension: -1,
     } as const,
@@ -78,8 +88,8 @@ export const DEFAULT_DATASET_CONFIGS: Record<string, UILayer[]> = {
       ...getBlockMeta("Linear"),
       activationFunction: "ReLU",
       params: {
-        inputNeurons: 9216,
-        outputNeurons: 128,
+        inputNeurons: 400,
+        outputNeurons: 32,
       },
     } as const,
     {
@@ -94,7 +104,7 @@ export const DEFAULT_DATASET_CONFIGS: Record<string, UILayer[]> = {
       ...getBlockMeta("Linear"),
       activationFunction: "No Activation",
       params: {
-        inputNeurons: 128,
+        inputNeurons: 32,
         outputNeurons: 10,
       },
     } as const,
