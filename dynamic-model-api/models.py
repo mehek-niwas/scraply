@@ -30,6 +30,35 @@ def _job_log(active_training, message: str):
     prefix = f"[job={str(job_id)[:8]}] " if job_id else ""
     print(f"{prefix}{message}")
 
+
+# TEMP MNIST batch logs. Set this to False, or delete this block and the two
+# `# MNIST_BATCH_LOG` lines in Train.train and Train.test.
+MNIST_BATCH_LOG = True
+MNIST_BATCH_LOG_EVERY = 50
+
+
+def _mnist_batch_logger(active_training, dataset, phase, total_batches):
+    """Progress lines for MNIST only. No-op for every other dataset."""
+    if not MNIST_BATCH_LOG or dataset != "MNIST":
+        return lambda *_args, **_kwargs: None
+
+    started = time.perf_counter()
+    _job_log(active_training, f"MNIST {phase} starting, {total_batches} batches")
+
+    def _tick(batch_idx, loss_sum, processed):
+        step = batch_idx + 1
+        if step != 1 and step % MNIST_BATCH_LOG_EVERY != 0 and step != total_batches:
+            return
+        elapsed = time.perf_counter() - started
+        avg_loss = loss_sum / processed if processed else 0.0
+        _job_log(
+            active_training,
+            f"MNIST {phase} batch {step}/{total_batches}  "
+            f"loss {avg_loss:.4f}  {elapsed:.1f}s",
+        )
+
+    return _tick
+
 from scipy.special import entr
 import base64
 
@@ -215,6 +244,9 @@ class Train:
         correct = 0
         total = 0
         processed_batches = 0
+        log_batch = _mnist_batch_logger(  # MNIST_BATCH_LOG
+            active_training, self.input, "train", len(self.train_loader)
+        )
 
         for batch, (X, y) in enumerate(self.train_loader):
             # Allow pause/stop mid-epoch (important for slower datasets like MNIST/CIFAR)
@@ -248,6 +280,7 @@ class Train:
             self.optimizer.zero_grad()
             train_loss += loss.item()
             processed_batches += 1
+            log_batch(batch, train_loss, processed_batches)  # MNIST_BATCH_LOG
 
             if self.input == "pima":
                 threshold = 0.5
@@ -273,6 +306,9 @@ class Train:
         all_predictions, all_labels, all_indices = [], [], []
         test_loss, correct, total = 0, 0, 0
         processed_batches = 0
+        log_batch = _mnist_batch_logger(  # MNIST_BATCH_LOG
+            active_training, self.input, "test", len(self.test_loader)
+        )
 
         with torch.no_grad():
             for idx, (X, y) in enumerate(self.test_loader):
@@ -297,6 +333,7 @@ class Train:
                 pred = self.model(X)
                 test_loss += self.loss_fn(pred, y).item()
                 processed_batches += 1
+                log_batch(idx, test_loss, processed_batches)  # MNIST_BATCH_LOG
 
                 if self.input == "pima":
                     threshold = 0.5
