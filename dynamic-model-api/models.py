@@ -31,33 +31,43 @@ def _job_log(active_training, message: str):
     print(f"{prefix}{message}")
 
 
-# TEMP MNIST batch logs. Set this to False, or delete this block and the two
-# `# MNIST_BATCH_LOG` lines in Train.train and Train.test.
+# TEMP MNIST batch logs. Set this to False, or delete this block and every
+# line marked `# MNIST_BATCH_LOG` in Train.train and Train.test.
 MNIST_BATCH_LOG = True
-MNIST_BATCH_LOG_EVERY = 50
 
 
 def _mnist_batch_logger(active_training, dataset, phase, total_batches):
-    """Progress lines for MNIST only. No-op for every other dataset."""
+    """Per-batch start/done lines for MNIST only. No-op for every other dataset."""
     if not MNIST_BATCH_LOG or dataset != "MNIST":
-        return lambda *_args, **_kwargs: None
+        def _noop(*_args, **_kwargs):
+            return None
+        return _noop, _noop
 
     started = time.perf_counter()
+    batch_started = None
     _job_log(active_training, f"MNIST {phase} starting, {total_batches} batches")
 
-    def _tick(batch_idx, loss_sum, processed):
+    def _begin(batch_idx):
+        nonlocal batch_started
+        batch_started = time.perf_counter()
         step = batch_idx + 1
-        if step != 1 and step % MNIST_BATCH_LOG_EVERY != 0 and step != total_batches:
-            return
-        elapsed = time.perf_counter() - started
+        _job_log(
+            active_training,
+            f"MNIST {phase} batch {step}/{total_batches} starting",
+        )
+
+    def _done(batch_idx, loss_sum, processed):
+        now = time.perf_counter()
+        step = batch_idx + 1
+        step_s = now - (batch_started if batch_started is not None else now)
         avg_loss = loss_sum / processed if processed else 0.0
         _job_log(
             active_training,
-            f"MNIST {phase} batch {step}/{total_batches}  "
-            f"loss {avg_loss:.4f}  {elapsed:.1f}s",
+            f"MNIST {phase} batch {step}/{total_batches} done  "
+            f"loss {avg_loss:.4f}  step {step_s:.1f}s  total {now - started:.1f}s",
         )
 
-    return _tick
+    return _begin, _done
 
 from scipy.special import entr
 import base64
@@ -244,7 +254,7 @@ class Train:
         correct = 0
         total = 0
         processed_batches = 0
-        log_batch = _mnist_batch_logger(  # MNIST_BATCH_LOG
+        log_batch_start, log_batch_done = _mnist_batch_logger(  # MNIST_BATCH_LOG
             active_training, self.input, "train", len(self.train_loader)
         )
 
@@ -270,6 +280,7 @@ class Train:
                 if not active_training.get("is_training", True):
                     break
 
+            log_batch_start(batch)  # MNIST_BATCH_LOG
             X, y = X.to(self.device), y.to(self.device)
             # Compute prediction error
             pred = self.model(X)
@@ -280,7 +291,7 @@ class Train:
             self.optimizer.zero_grad()
             train_loss += loss.item()
             processed_batches += 1
-            log_batch(batch, train_loss, processed_batches)  # MNIST_BATCH_LOG
+            log_batch_done(batch, train_loss, processed_batches)  # MNIST_BATCH_LOG
 
             if self.input == "pima":
                 threshold = 0.5
@@ -306,7 +317,7 @@ class Train:
         all_predictions, all_labels, all_indices = [], [], []
         test_loss, correct, total = 0, 0, 0
         processed_batches = 0
-        log_batch = _mnist_batch_logger(  # MNIST_BATCH_LOG
+        log_batch_start, log_batch_done = _mnist_batch_logger(  # MNIST_BATCH_LOG
             active_training, self.input, "test", len(self.test_loader)
         )
 
@@ -329,11 +340,12 @@ class Train:
                     if not active_training.get("is_training", True):
                         break
 
+                log_batch_start(idx)  # MNIST_BATCH_LOG
                 X, y = X.to(self.device), y.to(self.device)
                 pred = self.model(X)
                 test_loss += self.loss_fn(pred, y).item()
                 processed_batches += 1
-                log_batch(idx, test_loss, processed_batches)  # MNIST_BATCH_LOG
+                log_batch_done(idx, test_loss, processed_batches)  # MNIST_BATCH_LOG
 
                 if self.input == "pima":
                     threshold = 0.5
