@@ -65,10 +65,25 @@ def _configure_cpu_threads():
 _configure_cpu_threads()
 
 
+_training_log_sink = None
+
+
+def set_training_log_sink(sink):
+    """Register a callback that mirrors a job log line to that job's client."""
+    global _training_log_sink
+    _training_log_sink = sink
+
+
 def _job_log(active_training, message: str):
     job_id = (active_training or {}).get("job_id")
     prefix = f"[job={str(job_id)[:8]}] " if job_id else ""
-    print(f"{prefix}{message}")
+    line = f"{prefix}{message}"
+    print(line)
+    if _training_log_sink is not None and active_training is not None:
+        try:
+            _training_log_sink(active_training, line)
+        except Exception as exc:
+            print(f"Failed to forward training log: {exc}")
 
 
 # Sparse progress lines for image datasets. About this many lines for each
@@ -766,8 +781,7 @@ class Train:
         sample_root = os.path.join(tempfile.gettempdir(), "scraply_jobs", str(job_id))
 
         def _log(message: str):
-            prefix = f"[job={str(job_id)[:8]}] " if job_id and job_id != "default" else ""
-            print(f"{prefix}{message}")
+            _job_log(active_training, message)
 
         async def _emit(event, data):
             if dev_testing or socketio is None:

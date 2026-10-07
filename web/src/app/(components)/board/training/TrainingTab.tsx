@@ -14,8 +14,10 @@ import {
 
 import SharedTrainingConfig from "./SharedTrainingConfig";
 import HistoryItem from "./HistoryItem";
+import TrainingServerLog from "./TrainingServerLog";
 import { useEffect, useRef, useState } from "react";
 import { Config } from "~/types/index";
+import type { TrainingLogLine } from "~/types/training";
 
 interface TrainingTabProps {
   selectedDataset: string;
@@ -38,6 +40,7 @@ const TrainingTab: React.FC<TrainingTabProps> = ({ selectedDataset }) => {
     isTrainingPausing,
     trainingCompleted,
     trainingError,
+    trainingLogs,
     startTraining: startSocketTraining,
     pauseTraining,
     resumeTraining,
@@ -45,6 +48,10 @@ const TrainingTab: React.FC<TrainingTabProps> = ({ selectedDataset }) => {
     resetTraining,
     checkTrainingStatus,
   } = useSocket();
+
+  const trainingLogsRef = useRef(trainingLogs);
+  trainingLogsRef.current = trainingLogs;
+  const [savedLogs, setSavedLogs] = useState<TrainingLogLine[] | null>(null);
 
   const {
     // Configuration
@@ -160,10 +167,11 @@ const TrainingTab: React.FC<TrainingTabProps> = ({ selectedDataset }) => {
   // Handle training errors
   useEffect(() => {
     if (trainingError) {
+      setSavedLogs([...trainingLogsRef.current]);
       setIsTraining(false);
       setIsLiveTraining(false);
     }
-  }, [trainingError, setIsTraining, setIsLiveTraining]);
+  }, [trainingError, trainingLogs, setIsTraining, setIsLiveTraining]);
 
   // Handle training completion
   useEffect(() => {
@@ -180,7 +188,9 @@ const TrainingTab: React.FC<TrainingTabProps> = ({ selectedDataset }) => {
         test_losses: training.test_losses,
         trainingConfig: trainingConfigRef.current,
         run_name: runName,
+        logs: [...trainingLogsRef.current],
       });
+      setSavedLogs(null);
 
       // Reset live training state
       setCurrentProgress(null);
@@ -214,6 +224,7 @@ const TrainingTab: React.FC<TrainingTabProps> = ({ selectedDataset }) => {
     setIsTraining(true);
     setIsLiveTraining(true); // Set live training state immediately
     hadSocketTrainingRef.current = false;
+    setSavedLogs(null);
     resetTraining(); // Reset any previous socket training state
 
     try {
@@ -249,6 +260,7 @@ const TrainingTab: React.FC<TrainingTabProps> = ({ selectedDataset }) => {
 
   const handleStopTraining = () => {
     stopTraining();
+    setSavedLogs([...trainingLogsRef.current]);
 
     hadSocketTrainingRef.current = false;
     setIsTraining(false);
@@ -411,7 +423,10 @@ const TrainingTab: React.FC<TrainingTabProps> = ({ selectedDataset }) => {
                       : typeof trainingError === "string" &&
                           trainingError.toLowerCase().includes("too many users")
                         ? "Server Busy"
-                        : "Training Failed"}
+                        : typeof trainingError === "string" &&
+                            trainingError.toLowerCase().includes("longer than")
+                          ? "Time Limit Reached"
+                          : "Training Failed"}
                   </h3>
                   <p className="mt-1 text-xs text-red-300">
                     {configError || trainingError}
@@ -770,8 +785,14 @@ const TrainingTab: React.FC<TrainingTabProps> = ({ selectedDataset }) => {
                         </div>
                       </>
                     )}
+
+                    <TrainingServerLog logs={trainingLogs} active />
                   </div>
                 </div>
+              )}
+
+              {!isLiveTraining && savedLogs && savedLogs.length > 0 && (
+                <TrainingServerLog logs={savedLogs} active={false} />
               )}
 
               {/* Completed Training History */}

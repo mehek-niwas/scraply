@@ -3,6 +3,7 @@ import { ResponsiveLine } from "@nivo/line";
 import { useTrainingStore } from "~/state/trainingStore";
 import { useDownloadFile } from "~/hooks/useApi";
 import ModelMiniMap from "./ModelMiniMap";
+import TrainingServerLog from "./TrainingServerLog";
 
 interface HistoryItemProps {
   idx: number;
@@ -408,6 +409,12 @@ const HistoryItem: React.FC<HistoryItemProps> = ({
               <ModelMiniMap trainingConfig={trainingRes.trainingConfig} />
             </div>
           </div>
+        </div>
+      )}
+
+      {trainingRes.logs && trainingRes.logs.length > 0 && (
+        <div className="px-5 pb-4">
+          <TrainingServerLog logs={trainingRes.logs} active={false} />
         </div>
       )}
     </div>

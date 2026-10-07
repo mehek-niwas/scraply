@@ -10,6 +10,7 @@ import {
 } from "react";
 import io, { Socket } from "socket.io-client";
 import { API_CONFIG, SOCKET_CONFIG } from "~/util/config";
+import type { TrainingLogLine } from "~/types/training";
 
 const JOB_STORAGE_KEY = "scraply_training_job_id";
 
@@ -59,6 +60,24 @@ interface TrainingPhase {
   stage?: string;
 }
 
+function mergeTrainingLogs(
+  prev: TrainingLogLine[],
+  incoming: TrainingLogLine[],
+): TrainingLogLine[] {
+  const bySeq = new Map<number, TrainingLogLine>();
+  for (const entry of prev) {
+    bySeq.set(entry.seq, entry);
+  }
+  for (const entry of incoming) {
+    if (entry && typeof entry.seq === "number" && typeof entry.line === "string") {
+      bySeq.set(entry.seq, entry);
+    }
+  }
+  return Array.from(bySeq.values())
+    .sort((a, b) => a.seq - b.seq)
+    .slice(-300);
+}
+
 interface UseSocketReturn {
   isConnected: boolean;
   trainingProgress: TrainingProgress | null;
@@ -68,6 +87,7 @@ interface UseSocketReturn {
   isTrainingPausing: boolean;
   trainingCompleted: TrainingCompleted | null;
   trainingError: string | null;
+  trainingLogs: TrainingLogLine[];
   startTraining: (config: any) => void;
   pauseTraining: () => void;
   resumeTraining: () => void;
@@ -93,6 +113,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
   const [trainingCompleted, setTrainingCompleted] =
     useState<TrainingCompleted | null>(null);
   const [trainingError, setTrainingError] = useState<string | null>(null);
+  const [trainingLogs, setTrainingLogs] = useState<TrainingLogLine[]>([]);
 
   const socketRef = useRef<Socket | null>(null);
   const processedCompletedResultsRef = useRef<string | null>(null);
@@ -218,6 +239,13 @@ export function SocketProvider({ children }: { children: ReactNode }) {
       });
     });
 
+    newSocket.on("training_log", (data: TrainingLogLine) => {
+      if (typeof data?.seq !== "number" || typeof data?.line !== "string") {
+        return;
+      }
+      setTrainingLogs((prev) => mergeTrainingLogs(prev, [data]));
+    });
+
     newSocket.on("training_phase", (data: TrainingPhase) => {
       if (data?.message) {
         setTrainingPhase({
@@ -278,6 +306,9 @@ export function SocketProvider({ children }: { children: ReactNode }) {
             message: data.status_message,
             stage: data.status_stage,
           });
+        }
+        if (Array.isArray(data.logs)) {
+          setTrainingLogs((prev) => mergeTrainingLogs(prev, data.logs));
         }
       } else {
         isTrainingActiveRef.current = false;
@@ -429,6 +460,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
     setIsTrainingPaused(false);
     setIsTrainingPausing(false);
     setTrainingPhase(null);
+    setTrainingLogs([]);
     processedCompletedResultsRef.current = null;
   }, []);
 
@@ -453,6 +485,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
     isTrainingPausing,
     trainingCompleted,
     trainingError,
+    trainingLogs,
     startTraining,
     pauseTraining,
     resumeTraining,

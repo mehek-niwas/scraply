@@ -2,7 +2,7 @@ from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import Response
 from fastapi.middleware.cors import CORSMiddleware
 import socketio
-from models import DynamicModel, Train
+from models import DynamicModel, Train, set_training_log_sink
 from generate import Generate
 from params import (
     dataset_label,
@@ -14,7 +14,7 @@ import asyncio
 import uuid
 
 # Image datasets (anything except tabular pima) cannot exceed this epoch count
-IMAGE_EPOCHS_MAX = 5
+IMAGE_EPOCHS_MAX = 10
 MAX_CONCURRENT_JOBS = 2
 JOB_TTL_SECONDS = 15 * 60
 MAX_TRAINING_SECONDS = 10 * 60
@@ -29,14 +29,19 @@ def _short_id(value) -> str:
     return str(value)[:8]
 
 
-def _log(message: str, job_id=None, sid=None):
+def _log(message: str, job_id=None, sid=None, mirror: bool = True):
     parts = []
     if job_id:
         parts.append(f"job={_short_id(job_id)}")
     if sid:
         parts.append(f"sid={_short_id(sid)}")
     prefix = f"[{' '.join(parts)}] " if parts else ""
-    print(f"{prefix}{message}")
+    line = f"{prefix}{message}"
+    print(line)
+    if mirror and job_id:
+        job = jobs.get(job_id)
+        if job:
+            _publish_training_log(job, line)
 
 
 def _is_image_dataset(inp: str) -> bool:
@@ -110,6 +115,7 @@ def _job_status_payload(job):
             "is_paused": False,
             "pause_confirmed": False,
             "completed_results": None,
+            "logs": [],
         }
     return {
         "job_id": job.get("job_id"),
@@ -120,6 +126,7 @@ def _job_status_payload(job):
         "is_paused": job.get("is_paused", False),
         "pause_confirmed": job.get("pause_confirmed", False),
         "completed_results": job.get("completed_results"),
+        "logs": list(job.get("logs") or []),
     }
 
 
@@ -176,6 +183,9 @@ def _schedule_training_deadline(job):
         if stored is not job or not stored.get("is_training") or stored.get("time_limited"):
             return
         minutes = MAX_TRAINING_SECONDS // 60
+        limit_message = (
+            f"Training stopped because it ran longer than {minutes} minutes"
+        )
         _log(f"Dropping job; training exceeded {minutes} minutes", job_id=job_id)
         stored["time_limited"] = True
         stored["is_training"] = False
@@ -184,15 +194,7 @@ def _schedule_training_deadline(job):
         stored["current_progress"] = None
         stored["completed_results"] = None
         _cancel_job_timer(stored)
-        await _emit_job(
-            stored,
-            "training_stopped",
-            {
-                "message": (
-                    f"Training stopped because it ran longer than {minutes} minutes"
-                )
-            },
-        )
+        await _emit_job(stored, "training_error", {"error": limit_message})
         owner = stored.get("owner_sid")
         if owner and sid_to_job.get(owner) == job_id:
             sid_to_job.pop(owner, None)
@@ -219,6 +221,9 @@ def _create_job(owner_sid: str) -> dict:
         "time_limited": False,
         "task": None,
         "room": _job_room(job_id),
+        "logs": [],
+        "log_seq": 0,
+        "loop": asyncio.get_running_loop(),
     }
     jobs[job_id] = job
     sid_to_job[owner_sid] = job_id
@@ -232,9 +237,43 @@ async def _emit_job(job, event, data, to=None):
         payload.setdefault("job_id", job.get("job_id"))
         target = target or job.get("room")
     if not target:
-        _log(f"Skipped emit {event}: no job room")
+        _log(f"Skipped emit {event}: no job room", mirror=False)
         return
     await sio.emit(event, payload, room=target)
+
+
+TRAINING_LOG_LIMIT = 300
+
+
+def _publish_training_log(job, line: str):
+    """Send one server log line to this job's browser, from any thread."""
+    if not job or not line:
+        return
+    loop = job.get("loop")
+    if loop is None or loop.is_closed():
+        return
+
+    async def _send():
+        seq = job.get("log_seq", 0) + 1
+        job["log_seq"] = seq
+        entry = {"seq": seq, "line": line}
+        logs = job.setdefault("logs", [])
+        logs.append(entry)
+        if len(logs) > TRAINING_LOG_LIMIT:
+            del logs[:-TRAINING_LOG_LIMIT]
+        await _emit_job(job, "training_log", entry)
+
+    try:
+        running = asyncio.get_running_loop()
+    except RuntimeError:
+        running = None
+    if running is loop:
+        loop.create_task(_send())
+    else:
+        asyncio.run_coroutine_threadsafe(_send(), loop)
+
+
+set_training_log_sink(_publish_training_log)
 
 
 async def _set_job_phase(job, message: str, stage: str):

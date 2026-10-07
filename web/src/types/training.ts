@@ -26,6 +26,11 @@ export interface Config {
   run_name?: string;
 }
 
+export interface TrainingLogLine {
+  seq: number;
+  line: string;
+}
+
 export interface TrainingResult {
   avg_train_loss: number;
   avg_train_acc: number;
@@ -35,6 +40,7 @@ export interface TrainingResult {
   test_losses: { x: number; y: number }[];
   trainingConfig: Config;
   run_name?: string;
+  logs?: TrainingLogLine[];
 }
 
 export const TrainingResultFormat = {
