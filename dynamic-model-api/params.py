@@ -5,9 +5,7 @@ import pandas as pd
 from collections import Counter
 from pathlib import Path
 
-from torch.utils.data import Dataset
-from torchvision import datasets
-from torch.utils.data import DataLoader
+from torch.utils.data import Dataset, DataLoader, TensorDataset
 from torchvision import datasets, transforms
 from torchvision.transforms import ToTensor
 import torch.nn.functional as F
@@ -75,6 +73,47 @@ def describe_dataset_ready(name: str, ds) -> str:
     )
 
 
+class _CachedImageSet(TensorDataset):
+    """Float images kept in memory so each batch does not decode a file."""
+
+    def __init__(self, images, labels, classes):
+        super().__init__(images, labels)
+        self.classes = list(classes)
+
+
+def _images_to_nchw(images):
+    if not torch.is_tensor(images):
+        images = torch.as_tensor(images)
+    images = images.to(dtype=torch.float32).div(255.0)
+    if images.ndim == 3:
+        images = images.unsqueeze(1)
+    elif images.ndim == 4 and images.shape[-1] in (1, 3) and images.shape[1] not in (1, 3):
+        images = images.permute(0, 3, 1, 2).contiguous()
+    return images
+
+
+def _labels_to_long(labels):
+    if not torch.is_tensor(labels):
+        labels = torch.as_tensor(labels)
+    return labels.to(dtype=torch.long)
+
+
+def _load_cached_image_dataset(dataset_cls):
+    """MNIST and Fashion-MNIST are small enough to hold as tensors."""
+    train_raw = dataset_cls(root=str(_TORCHVISION_ROOT), train=True, download=True)
+    test_raw = dataset_cls(root=str(_TORCHVISION_ROOT), train=False, download=True)
+    classes = list(getattr(train_raw, "classes", []))
+
+    def _pack(raw):
+        return _CachedImageSet(
+            _images_to_nchw(raw.data),
+            _labels_to_long(raw.targets),
+            classes,
+        )
+
+    return {"train": _pack(train_raw), "test": _pack(test_raw)}
+
+
 def _load_image_dataset(dataset_cls):
     return {
         "train": dataset_cls(
@@ -101,9 +140,9 @@ def _load_dataset(name: str):
         data = pd.read_csv(_PIMA_CSV, header=None).values
         return {"X": data[:, :-1], "y": data[:, -1]}
     if name == "MNIST":
-        return _load_image_dataset(datasets.MNIST)
+        return _load_cached_image_dataset(datasets.MNIST)
     if name == "FashionMNIST":
-        return _load_image_dataset(datasets.FashionMNIST)
+        return _load_cached_image_dataset(datasets.FashionMNIST)
     if name == "CIFAR10":
         return _load_image_dataset(datasets.CIFAR10)
     raise KeyError(f"Unknown dataset: {name}")
